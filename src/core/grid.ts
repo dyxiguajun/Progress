@@ -1,5 +1,5 @@
 import { groupForCard,visibleGroupCards } from './cardGroups';
-import { type Card, type CardLayouts, type Component, type GridSpan, type LayoutVariant, type Workspace } from './model';
+import { type Card, type CardLayout, type LayoutPosition, type LayoutProfile, type CardLayouts, type Component, type GridSpan, type LayoutVariant, type Workspace } from './model';
 
 // Official renderers own these variants; component declarations can restrict or replace them.
 export const officialLayouts: CardLayouts = {
@@ -16,11 +16,19 @@ export const officialLayouts: CardLayouts = {
 };
 export function layoutComponent(workspace:Workspace,card:Card):Component {const component=workspace.components.find(c=>c.manifest.id===workspace.instances.find(i=>i.id===card.instanceId)!.componentId)!;return groupForCard(workspace,card.id)?.cardIds[0]===card.id?{...component,manifest:{...component.manifest,cardLayouts:officialLayouts}}:component;}
 export const layoutsFor = (component: Component) => ['dev.progress.codex-usage','dev.progress.connected-quota'].includes(component.manifest.id) ? officialLayouts : component.manifest.cardLayouts ?? officialLayouts;
-export const preferredVariant = (card: Card, component: Component) => card.layout?.variant ?? layoutsFor(component).default;
+export const activeLayout = (layout:CardLayout|undefined,profile:LayoutProfile='desktop') => profile==='mobile'?layout?.mobile??layout:layout;
+export const preferredVariant = (card: Card, component: Component, profile:LayoutProfile='desktop') => activeLayout(card.layout,profile)?.variant ?? layoutsFor(component).default;
+export function writeLayout(layout:CardLayout|undefined,next:LayoutPosition,profile:LayoutProfile='desktop'):CardLayout {
+  return profile==='mobile'?{...layout,variant:layout?.variant??next.variant,mobile:{...activeLayout(layout,profile),...next}}:{...layout,...next};
+}
+export function layoutProfile(width:number,height:number,coarse=false):LayoutProfile {
+  return width<=680||coarse&&Math.min(width,height)<=680?'mobile':'desktop';
+}
 export const variantLabel = (variant: LayoutVariant) => !variant.label && variant.id.startsWith('size-') ? `${variant.span.columns}×${variant.span.rows}` : `${variant.label ?? variant.id} · ${variant.span.columns}×${variant.span.rows}`;
 export const variantDensity = (span: GridSpan) => span.columns === 1 && span.rows === 1 ? 'compact' : span.rows === 1 ? 'wide' : span.columns === 1 ? 'tall' : span.columns * span.rows >= 8 ? 'expanded' : 'large';
 export const gridTokens = { minCell: 168, preferredCell: 190, maxCell: 336, minGap: 12, preferredGap: 16, maxGap: 20, minInset: 0, maxInset: 12 };
-export function resolveGrid(width: number) {
+export function resolveGrid(width: number, profile:LayoutProfile='desktop') {
+  if(profile==='mobile'){const columns=width<=520?4:Math.max(4,Math.min(12,Math.floor(width/90))),gap=6,cell=Math.max(0,(width-gap*(columns-1))/columns);return {columns,gap,cell,rowHeight:cell,inset:0};}
   const available = Math.max(0, width);
   const columns = Math.max(1, Math.min(12, Math.floor((available + gridTokens.minGap) / (gridTokens.minCell + gridTokens.minGap))));
   const desiredGap = Math.max(gridTokens.minGap, Math.min(gridTokens.maxGap, gridTokens.preferredGap + (available / columns - gridTokens.preferredCell) / 15));
@@ -46,8 +54,8 @@ export function fittingHorizontalVariant(component:Component,preferred:string,ro
   while(current&&!seen.has(current.id)){if(current.span.rows<=rows)return current;seen.add(current.id);current=variants.find(v=>v.id===current!.fallback);}
   return variants.filter(v=>v.span.rows<=rows).sort((a,b)=>Math.abs(a.span.rows-rows)-Math.abs(b.span.rows-rows))[0]??null;
 }
-export function resolveHorizontalGrid(width:number,height:number) {
-  const gap=16,cell=Math.max(168,Math.min(210,resolveGrid(width).cell));
+export function resolveHorizontalGrid(width:number,height:number,profile:LayoutProfile='desktop') {
+  const compact=resolveGrid(width,profile),gap=profile==='mobile'?compact.gap:16,cell=profile==='mobile'?compact.cell:Math.max(168,Math.min(210,compact.cell));
   const rows=Math.max(1,Math.min(8,Math.floor((Math.max(168,height)+gap)/(cell+gap))));
   return {cell,gap,rows,height:Math.max(168,height)};
 }
@@ -83,15 +91,15 @@ function firstFit(span: GridSpan, occupied: Set<string>, columns: number) {
   throw new Error('没有可用的卡片位置。');
 }
 const transpose=(slot:Placement):Placement=>({...slot,column:slot.row,row:slot.column,span:{columns:slot.span.rows,rows:slot.span.columns},variant:slot.variant?{...slot.variant,span:{columns:slot.variant.span.rows,rows:slot.variant.span.columns}}:null});
-export function resolvePlacements(workspace: Workspace, columns: number, horizontal=false): Placement[] {
+export function resolvePlacements(workspace: Workspace, columns: number, horizontal=false,profile:LayoutProfile='desktop'): Placement[] {
   const occupied = new Set<string>(), result = new Map<string, Placement>();
   const visualCards=visibleGroupCards(workspace);
   const candidates = visualCards.map(card => {
     const instance = workspace.instances.find(i => i.id === card.instanceId)!;
     const component = layoutComponent(workspace,card);
-    const variant = horizontal?fittingHorizontalVariant(component,preferredVariant(card,component),columns):fittingVariant(component, preferredVariant(card, component), columns);
+    const variant = horizontal?fittingHorizontalVariant(component,preferredVariant(card,component,profile),columns):fittingVariant(component, preferredVariant(card, component,profile), columns);
     const span=variant?.span ?? {columns:1,rows:1};
-    const position=horizontal?card.layout?.horizontalPosition:card.layout?.position;
+    const layout=activeLayout(card.layout,profile),position=horizontal?layout?.horizontalPosition:layout?.position;
     return { card, variant, span:horizontal?{columns:span.rows,rows:span.columns}:span,position:position?(horizontal?{column:position.row,row:position.column}:position):undefined };
   });
   // Reserve all still-valid hints first. A newly added card must not displace existing cards.
@@ -126,15 +134,12 @@ export function reflow(placements: Placement[], id: string, position: { column: 
   }
   return placements.map(p => changed.get(p.id) ?? p);
 }
-export function commitPlacements(workspace: Workspace, placements: Placement[], columns: number, preference?: { id: string; variant: string }, horizontal=false): Workspace {
+export function commitPlacements(workspace: Workspace, placements: Placement[], columns: number, preference?: { id: string; variant: string }, horizontal=false,profile:LayoutProfile='desktop'): Workspace {
   const slots = new Map(placements.map(slot => [slot.id, slot]));
-  const cards = workspace.cards.map(card => {
-    const slot = slots.get(card.id); if (!slot||groupForCard(workspace,card.id)) return card;
-    const component = workspace.components.find(c => c.manifest.id === workspace.instances.find(i => i.id === card.instanceId)!.componentId)!;
-    return { ...card, layout: { ...card.layout,variant: preference?.id === card.id ? preference.variant : preferredVariant(card, component), ...(horizontal?{horizontalPosition:{column:slot.column,row:slot.row,rows:columns}}:{position: { column: slot.column, row: slot.row, columns }}) } };
-  });
-  const cardGroups=workspace.cardGroups?.map(group=>{const slot=slots.get(group.cardIds[0]);if(!slot)return group;return {...group,layout:{...group.layout,variant:preference?.id===slot.id?preference.variant:group.layout?.variant??'large',...(horizontal?{horizontalPosition:{column:slot.column,row:slot.row,rows:columns}}:{position:{column:slot.column,row:slot.row,columns}})}};});
-  return { ...workspace, cards,...(cardGroups?{cardGroups}:{}) };
+  const update=(layout:CardLayout|undefined,slot:Placement,variant:string)=>writeLayout(layout,{...activeLayout(layout,profile),variant:preference?.id===slot.id?preference.variant:variant,...(horizontal?{horizontalPosition:{column:slot.column,row:slot.row,rows:columns}}:{position:{column:slot.column,row:slot.row,columns}})},profile);
+  const cards=workspace.cards.map(card=>{const slot=slots.get(card.id);return !slot||groupForCard(workspace,card.id)?card:{...card,layout:update(card.layout,slot,preferredVariant(card,layoutComponent(workspace,card),profile))};});
+  const cardGroups=workspace.cardGroups?.map(group=>{const slot=slots.get(group.cardIds[0]);return slot?{...group,layout:update(group.layout,slot,activeLayout(group.layout,profile)?.variant??'large')}:group;});
+  return {...workspace,cards,...(cardGroups?{cardGroups}:{})};
 }
 
 // Move cards only forward into earlier holes, retaining stable visual order.

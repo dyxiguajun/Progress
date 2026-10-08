@@ -1,10 +1,9 @@
+import {extensionAvailable,backgroundMetrics} from './extension';
 import { refreshInterval, type Component, type Instance, type Metric } from './model';
-import { normalizeMetrics, templateUrl } from './validation';
+import { templateUrl } from './validation';
 
-export class DataSourceError extends Error {
-  constructor(public code: 'permission' | 'connection' | 'invalid', message: string) { super(message); }
-}
-
+export {DataSourceError} from './httpResponse';
+import {DataSourceError,readProgressResponse} from './httpResponse';
 export function localMetrics(component: Component, instance: Instance): Metric[] {
   const config = instance.config;
   const base = { id: 'main', name: instance.name };
@@ -20,27 +19,10 @@ export async function fetchMetrics(component: Component, instance: Instance, sig
   if (component.manifest.runtime.type !== 'http') return localMetrics(component, instance);
   if (!instance.networkConsent) throw new DataSourceError('permission', '需要允许此连接访问网络。');
   const url = templateUrl(component.manifest.runtime.url, instance.config);
+  if(instance.backgroundCollection&&await extensionAvailable())return backgroundMetrics(instance.id,url,signal);
+  if(typeof location!=='undefined'&&location.protocol==='https:'&&new URL(url).protocol==='http:')throw new DataSourceError('connection','HTTPS 页面无法读取 HTTP 接口。请使用 HTTPS，或安装并授权后台插件。');
   const response = await fetch(url, { signal, credentials: 'omit', cache: 'no-store', redirect: 'error' });
-  if (!response.ok) throw new DataSourceError('connection', `服务暂时不可用（${response.status}）。`);
-  const declaredSize = Number(response.headers.get('content-length'));
-  if (declaredSize > 2_000_000) throw new Error('服务返回的数据过大。');
-  if (!response.body) throw new Error('服务没有返回数据。');
-  const reader = response.body.getReader();
-  let size = 0; const chunks: Uint8Array[] = [];
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > 2_000_000) { await reader.cancel(); throw new Error('服务返回的数据过大。'); }
-    chunks.push(value);
-  }
-  const joined = new Uint8Array(size); let offset = 0;
-  chunks.forEach(chunk => { joined.set(chunk, offset); offset += chunk.byteLength; });
-  let metrics: Metric[];
-  try { metrics = normalizeMetrics(JSON.parse(new TextDecoder().decode(joined))); }
-  catch { throw new DataSourceError('invalid', '服务返回的数据格式不受支持。请检查数据源或更换组件。'); }
-  const observed_at = new Date().toISOString();
-  return metrics.map(metric => ({ ...metric, observed_at: metric.observed_at ?? observed_at, stale_after: metric.stale_after ?? refreshInterval(component, instance) * 3 }));
+  return readProgressResponse(response,refreshInterval(component,instance));
 }
 export function runtimeError(error: unknown) {
   if (error instanceof DOMException && error.name === 'TimeoutError') return '连接超时。稍后会自动重试。';

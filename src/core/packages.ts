@@ -3,7 +3,7 @@ import {pruneCardGroups} from "./cardGroups";
 import { migrateFolders } from "./folders";
 import { builtins } from "./components";
 import { CODEX_COMPONENT_ID } from "./codex";
-import { clone, uid, type Component, type Workspace } from "./model";
+import { clone, uid, type CardLayout, type Component, type Workspace } from "./model";
 import {
   assertComponent,
   assertWorkspace,
@@ -115,7 +115,7 @@ export async function importFile(
   assertWorkspace(workspace);
   // Network authorization belongs to this device, never to imported data.
   workspace.instances.forEach((instance) => {
-    delete instance.networkConsent;
+    delete instance.networkConsent;delete instance.backgroundCollection;
     if (instance.componentId === CODEX_COMPONENT_ID)
       instance.config = { accountKey: "" };
   });
@@ -186,7 +186,7 @@ export function mergeWorkspace(
       continue;
     }
     const copy = clone(instance);
-    delete copy.networkConsent;
+    delete copy.networkConsent;delete copy.backgroundCollection;
     if (copy.connectionIds)
       copy.connectionIds = copy.connectionIds.map(
         (id) => connectionIds.get(id) ?? id,
@@ -229,6 +229,7 @@ export function mergeWorkspace(
   return result;
 }
 
+function portableLayout(layout:CardLayout){const position=(p:CardLayout)=>({variant:p.variant,...(p.position?{position:{column:p.position.column,row:p.position.row,columns:p.position.columns}}:{}),...(p.horizontalPosition?{horizontalPosition:{column:p.horizontalPosition.column,row:p.horizontalPosition.row,rows:p.horizontalPosition.rows}}:{})});return {...position(layout),...(layout.mobile?{mobile:position(layout.mobile)}:{})};}
 export function portableWorkspace(workspace: Workspace): Workspace {
   for (const instance of workspace.instances) {
     if (instance.componentId === CODEX_COMPONENT_ID) continue;
@@ -270,7 +271,7 @@ export function portableWorkspace(workspace: Workspace): Workspace {
     components: copied.components,
     instances: copied.instances,
     cards: copied.cards,
-    ...(copied.cardGroups?{cardGroups:copied.cardGroups.map(g=>({id:g.id,name:g.name,cardIds:g.cardIds,style:g.style,...(g.simple!==undefined?{simple:g.simple}:{}),...(g.layout?{layout:{variant:g.layout.variant,...(g.layout.position?{position:{column:g.layout.position.column,row:g.layout.position.row,columns:g.layout.position.columns}}:{}),...(g.layout.horizontalPosition?{horizontalPosition:{column:g.layout.horizontalPosition.column,row:g.layout.horizontalPosition.row,rows:g.layout.horizontalPosition.rows}}:{})}}:{})}))}:{}),
+    ...(copied.cardGroups?{cardGroups:copied.cardGroups.map(g=>({id:g.id,name:g.name,cardIds:g.cardIds,style:g.style,...(g.simple!==undefined?{simple:g.simple}:{}),...(g.layout?{layout:{variant:g.layout.variant,...(g.layout.mobile?{mobile:portableLayout(g.layout.mobile)}:{}),...(g.layout.position?{position:{column:g.layout.position.column,row:g.layout.position.row,columns:g.layout.position.columns}}:{}),...(g.layout.horizontalPosition?{horizontalPosition:{column:g.layout.horizontalPosition.column,row:g.layout.horizontalPosition.row,rows:g.layout.horizontalPosition.rows}}:{})}}:{})}))}:{}),
     ...(copied.folders
       ? {
           folders: copied.folders.map((f) => ({
@@ -300,7 +301,7 @@ export function portableWorkspace(workspace: Workspace): Workspace {
       : {}),
   }));
   exported.instances = exported.instances.map((i) => {
-    delete i.networkConsent;
+    delete i.networkConsent;delete i.backgroundCollection;
     return i.componentId === CODEX_COMPONENT_ID
       ? {
           id: i.id,
@@ -354,6 +355,7 @@ export function portableWorkspace(workspace: Workspace): Workspace {
       ? {
           layout: {
             variant: c.layout.variant,
+            ...(c.layout.mobile?{mobile:portableLayout(c.layout.mobile)}:{}),
             ...(c.layout.horizontalPosition ? {horizontalPosition:{column:c.layout.horizontalPosition.column,row:c.layout.horizontalPosition.row,rows:c.layout.horizontalPosition.rows}} : {}),
             ...(c.layout.position
               ? {

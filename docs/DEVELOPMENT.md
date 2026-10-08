@@ -18,6 +18,7 @@ pnpm preview
 - `src/ui`: cards, dialogs, gestures and presentation.
 - `src/hooks`: collection and subscription lifecycle.
 - `scripts`: local agents, desktop launcher, simulated HTTP source and example packaging.
+- `extension`: optional Manifest V3 HTTP collector; build with `pnpm extension:build` and follow [installation and permissions](Chrome_Background.md).
 - `tests`: Vitest regression tests; fixtures are synthetic / test-only.
 - `examples`, `spec`: module examples and schemas.
 - `dist`: generated Web output, never committed.

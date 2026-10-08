@@ -1,7 +1,7 @@
 {
   "name": "progress-app",
   "private": true,
-  "version": "0.6.4",
+  "version": "0.6.5",
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -10,7 +10,8 @@
     "test": "vitest run",
     "android:sync": "pnpm build && cap sync android",
     "android:open": "cap open android",
-    "desktop": "pnpm build && node scripts/desktop.mjs"
+    "desktop": "pnpm build && node scripts/desktop.mjs",
+    "extension:build": "node scripts/build-extension.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",

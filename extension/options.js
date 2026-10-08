@@ -1,0 +1,11 @@
+const permissionOrigin=url=>`${url.protocol}//${url.hostname}/*`;
+const status=document.querySelector('#status');
+async function render(){
+  const permissions=await chrome.permissions.getAll();const target=document.querySelector('#permissions');target.replaceChildren();
+  for(const origin of permissions.origins??[]){const row=document.createElement('div');row.className='row';const label=document.createElement('span');label.textContent=origin;const remove=document.createElement('button');remove.className='secondary';remove.textContent='撤销';remove.onclick=async()=>{await chrome.permissions.remove({origins:[origin]});const {endpoints=[]}=await chrome.storage.local.get('endpoints');await chrome.storage.local.set({endpoints:endpoints.filter(url=>permissionOrigin(new URL(url))!==origin)});await render();};row.append(label,remove);target.append(row);}
+  const {sources=[]}=await chrome.storage.local.get('sources');const list=document.querySelector('#sources');list.replaceChildren();for(const source of sources){const row=document.createElement('div');row.className='row';row.textContent=`${new URL(source.url).hostname} · ${source.interval} 秒 · ${source.error?'采集失败':source.lastSuccess?`更新于 ${new Date(source.lastSuccess).toLocaleTimeString()}`:'等待采集'}`;list.append(row);}if(!sources.length)list.textContent='尚未开启后台采集。';
+}
+document.querySelector('#grant').onsubmit=async event=>{event.preventDefault();try{const url=new URL(document.querySelector('#endpoint').value);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('请填写不含登录凭据的 HTTP / HTTPS 接口地址。');const granted=await chrome.permissions.request({origins:[permissionOrigin(url)]});if(granted){const {endpoints=[]}=await chrome.storage.local.get('endpoints');await chrome.storage.local.set({endpoints:[...new Set([...endpoints,url.href])]});}status.textContent=granted?'已授权。返回 Progress 开启此连接的后台采集。':'未授权。';await render();}catch{status.textContent='授权失败，请检查接口地址。';}};
+document.querySelector('#clear').onclick=async()=>{const result=await chrome.runtime.sendMessage({type:'CLEAR'});status.textContent=result.ok?'全部采集已停止，缓存已清除。':result.error;await render();};void render();
+
+chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&(changes.sources||changes.endpoints))void render();});

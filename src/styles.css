@@ -140,7 +140,7 @@ nav button:hover { background: var(--input); }nav button.active { background: va
 .grid-slot .layout-expanded .renderer-bar .metric-details { grid-column: 2; grid-row: 3; flex-wrap: wrap; gap: 10px; }
 .grid-slot .layout-expanded .renderer-bar .secondary { grid-column: 1 / -1; margin-top: 24px; }
 .grid-slot .layout-large .card-alert, .grid-slot .layout-expanded .card-alert { margin-left: -22px; margin-right: -22px; margin-bottom: -22px; padding: 12px 22px; }
-.workspace-grid.is-editing { touch-action: none; }
+.workspace-grid.is-editing { touch-action: auto; }
 .workspace-grid.is-editing .grid-slot { cursor: grab; user-select: none; }
 .workspace-grid.is-editing .grid-slot>.grid-widget>.progress-card { outline: 1px solid color-mix(in srgb, var(--primary) 35%, var(--line)); animation: widget-jiggle 1.1s ease-in-out infinite alternate; }
 .workspace-grid.is-editing .grid-slot:nth-child(even)>.progress-card { animation-delay: -.45s; }
@@ -703,3 +703,61 @@ h1 {font-size:var(--type-title2);}h2,h3 {font-size:var(--type-body);}h4,h5,h6 {f
 .display-order {display:flex;flex-shrink:0;}
 .display-order .icon-button {width:32px;height:32px;}
 .display-order .icon-button:disabled {opacity:.3;}
+
+/* Narrow component rows have their own layout, independent of the widget grid. */
+@media(max-width:680px) {
+  .library-card {display:flex;flex-direction:column;align-items:stretch;gap:12px;min-width:0;}
+  .library-select {display:grid;grid-template-columns:32px minmax(0,1fr);gap:6px 12px;min-width:0;}
+  .library-select .library-icon {grid-column:1;grid-row:1 / span 3;align-self:start;}
+  .library-select .library-card-title,.library-select p,.library-select .library-meta {grid-column:2;min-width:0;overflow-wrap:anywhere;}
+  .library-select .library-card-title {line-height:1.45;}
+  .library-select .library-meta {margin-top:4px;}
+  .library-card>.text-button {align-self:flex-end;}
+  .page-content {padding-inline:14px;}
+  .topbar .breadcrumb {min-width:0;overflow:hidden;}
+  .topbar .breadcrumb h1 {min-width:0;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;}
+  .topbar-actions {flex-shrink:0;}
+  .library-toolbar {flex-wrap:wrap;}
+  .library-toolbar .search-box {min-width:140px;}
+  .modal-body input,.editor-body input,.modal-body textarea,.editor-body textarea,.modal-body select,.editor-body select {font-size:16px;}
+  .modal-actions {padding-bottom:max(14px,env(safe-area-inset-bottom));}
+}
+.compact-grid .grid-slot .layout-compact {--card-inset:6px;--card-header-height:20px;padding:6px;}
+.compact-grid .grid-slot .layout-compact .card-header {min-height:20px;margin-bottom:3px;}
+.compact-grid .grid-slot .layout-compact .card-icon {height:20px;width:20px;}
+.compact-grid .grid-slot .layout-compact .card-icon svg {width:18px;height:18px;}
+.compact-grid .grid-slot .layout-compact .demo-label {display:none;}
+.compact-grid .grid-slot .layout-compact .card-config {position:absolute;inset:0 0 auto auto;margin:0;opacity:0;pointer-events:none;}
+.compact-grid .grid-slot .layout-compact .card-config:focus-visible {opacity:1;pointer-events:auto;background:var(--panel);}
+.compact-grid .grid-slot .layout-compact .metric-headline {font-size:var(--type-title2);line-height:1.1;}
+.compact-grid .grid-slot .layout-compact .metric-label {display:none;}
+.compact-grid .grid-slot .layout-compact .ring {width:40px;height:40px;}
+.compact-grid .grid-slot .layout-compact .ring-center-icon svg {width:16px;height:16px;}
+.compact-grid .grid-slot .layout-compact .ring-below-value {font-size:var(--type-caption);line-height:1;}
+.compact-grid .grid-slot .layout-compact .ring-figure {gap:2px;}
+.compact-grid .grid-slot .layout-compact .ring-layout {gap:0;}
+.compact-grid .grid-remove {width:44px;height:44px;top:-12px;left:-12px;}
+.compact-grid .grid-resize {width:44px;height:44px;}
+/* The measured mobile cell may be smaller than any desktop density. */
+.compact-grid .grid-slot>.grid-widget>.progress-card {--card-inset:8px;--card-header-height:20px;--card-icon-size:20px;padding:8px;container-type:size;}
+.compact-grid .grid-slot .card-header {min-height:20px;margin-bottom:4px;}
+.compact-grid .grid-slot .card-icon {height:20px;width:20px;}
+.compact-grid .grid-slot .card-icon svg {width:18px;height:18px;}
+.compact-grid .grid-slot .demo-label {display:none;}
+.compact-grid .grid-slot .card-config {margin-block:-12px;}
+.compact-grid .grid-slot .layout-compact {padding:6px;}
+.metric-footer:empty {display:none;}
+@container (max-height:100px) {
+  .compact-grid .grid-slot .progress-card .metric-headline,.compact-grid .grid-slot .progress-card .display-atomic {font-size:var(--type-title2);line-height:1.15;}
+  .compact-grid .grid-slot .progress-card .metric-label {display:none;}
+  .compact-grid .grid-slot .progress-card .ring {width:36px;height:36px;}
+  .compact-grid .grid-slot .progress-card .ring-number {font-size:var(--type-subhead);}
+  .compact-grid .grid-slot .progress-card .ring-number>span {font-size:var(--type-caption);}
+  .compact-grid .grid-slot .progress-card .ring-center-icon svg {width:16px;height:16px;}
+  .compact-grid .grid-slot .progress-card .ring-layout {gap:8px;}
+  .compact-grid .grid-slot .progress-card .ring-below-value {font-size:var(--type-caption);line-height:1.1;}
+}
+@container (max-height:52px) {
+  .compact-grid .grid-slot .progress-card .metric-headline,.compact-grid .grid-slot .progress-card .display-atomic {font-size:var(--type-body);line-height:1.15;}
+  .compact-grid .grid-slot .progress-card .bar-track {height:3px;margin-top:3px;}
+}

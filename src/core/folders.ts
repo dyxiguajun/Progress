@@ -1,5 +1,5 @@
 import {groupForCard,moveGroup,pruneCardGroups} from './cardGroups';
-import { clone, uid, type Workspace, type Folder } from './model';
+import { clone, uid, layoutSizes, type Workspace, type Folder } from './model';
 export const defaultFolder: Folder = { id: 'default', name: '日常', icon: 'folder', color: '#197b65' };
 export function migrateFolders(workspace: Workspace): Workspace {
   const next = clone(workspace); next.folders ??= [clone(defaultFolder)]; next.autoFill ??= true; next.connections ??= []; delete (next as Workspace & {wheelMode?:unknown}).wheelMode;
@@ -10,7 +10,7 @@ export function folderWorkspace(workspace: Workspace, id: string): Workspace { r
 export function moveCard(workspace: Workspace, cardId: string, folderId: string): Workspace {
   if (!workspace.folders?.some(f => f.id === folderId)) throw new Error('文件夹不存在。');
   const group=groupForCard(workspace,cardId);if(group)return moveGroup(workspace,group.id,folderId);
-  return { ...workspace, cards: workspace.cards.map(c => c.id === cardId ? { ...c, folderId, layout: c.layout ? { variant: c.layout.variant } : undefined } : c) };
+  return { ...workspace, cards: workspace.cards.map(c => c.id === cardId ? { ...c, folderId, layout: layoutSizes(c.layout) } : c) };
 }
 export function duplicateFolder(workspace: Workspace, id: string): Workspace {
   const next = clone(workspace), folder = next.folders!.find(f => f.id === id)!; const folderId = uid();

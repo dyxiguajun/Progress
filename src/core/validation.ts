@@ -1,7 +1,9 @@
+import {assertMetrics,normalizeMetrics} from './metrics';
+export {assertMetrics,normalizeMetrics} from './metrics';
 import { iconNames } from './iconCatalog';
 import Ajv from 'ajv';
 import Ajv2020 from 'ajv/dist/2020';
-import { type Component, type Config, type Metric, type Workspace } from './model';
+import { type Component, type Config, type Workspace } from './model';
 import { layoutsFor, officialLayouts } from './grid';
 
 const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
@@ -19,38 +21,6 @@ const date = (v: unknown) => {
   return month >= 1 && month <= 12 && day >= 1 && day <= new Date(Date.UTC(year, month, 0)).getUTCDate() && hour <= 23 && minute <= 59 && second <= 59;
 };
 const text = (v: unknown) => typeof v === 'string' && v.length > 0 && v.length <= 200;
-export function assertMetrics(value: unknown): asserts value is Metric[] {
-  if (!Array.isArray(value) || !value.length || value.length > 100) throw new Error('数据源需要返回 1–100 个指标。');
-  const ids = new Set<string>();
-  for (const m of value) {
-    if (!object(m) || !text(m.id) || !text(m.name) || ids.has(m.id)) throw new Error('指标必须有唯一 ID 和名称。');
-    ids.add(m.id);
-    if (!['range', 'gauge', 'counter', 'time_range', 'state', 'indeterminate'].includes(m.kind)) throw new Error('暂不支持这个指标类型。');
-    if (['range', 'gauge', 'counter'].includes(m.kind) && !finite(m.value)) throw new Error('指标数值必须是有限数字。');
-    if (m.kind === 'range' && (!finite(m.max) || (m.min !== undefined && !finite(m.min)) || m.max <= (m.min ?? 0))) throw new Error('范围上限必须大于下限。');
-    if (m.kind === 'time_range' && (!date(m.end) || (m.start !== undefined && (!date(m.start) || Date.parse(m.start) >= Date.parse(m.end))))) throw new Error('时间范围无效，结束时间必须晚于开始时间。');
-    if (m.kind === 'state' && !text(m.value)) throw new Error('状态值必须是非空文字。');
-    if (m.kind === 'indeterminate' && m.value !== undefined && !finite(m.value)) throw new Error('不确定进度的计数必须是数字。');
-    if (m.observed_at !== undefined && !date(m.observed_at)) throw new Error('观测时间无效。');
-    if (m.reset_at !== undefined && !date(m.reset_at)) throw new Error('重置时间无效。');
-    if (m.window_minutes !== undefined && (!finite(m.window_minutes) || m.window_minutes <= 0)) throw new Error('配额窗口时长无效。');
-    if (m.stale_after !== undefined && (!finite(m.stale_after) || m.stale_after < 0)) throw new Error('过期时间必须是非负秒数。');
-    for (const key of ['unit', 'meaning', 'status']) if (m[key] !== undefined && typeof m[key] !== 'string') throw new Error('指标文字字段格式无效。');
-    if (m.secondary !== undefined && (!Array.isArray(m.secondary) || m.secondary.length > 20 || m.secondary.some((s: any) => !object(s) || !text(s.role) || !finite(s.value) || (s.unit !== undefined && typeof s.unit !== 'string') || s.id!==undefined&&!text(s.id) || s.label!==undefined&&!text(s.label)) || new Set(m.secondary.filter((s:any)=>s.id!==undefined).map((s:any)=>s.id)).size!==m.secondary.filter((s:any)=>s.id!==undefined).length)) throw new Error('辅助指标格式无效。');
-  }
-}
-export function normalizeMetrics(value: unknown): Metric[] {
-  let metrics: unknown;
-  if (Array.isArray(value)) metrics = value;
-  else if (object(value) && Array.isArray(value.metrics)) metrics = value.metrics;
-  else if (object(value)) metrics = [{ ...value, id: value.id ?? 'main', name: value.name ?? '当前进度' }];
-  assertMetrics(metrics);
-  const keys = ['id','name','kind','value','min','max','unit','meaning','start','end','status','observed_at','reset_at','window_minutes','stale_after'];
-  return metrics.map(m => ({
-    ...Object.fromEntries(keys.filter(key => m[key as keyof Metric] !== undefined).map(key => [key,m[key as keyof Metric]])),
-    ...(m.secondary ? {secondary: m.secondary.map(s => ({role:s.role,value:s.value,...(s.unit !== undefined ? {unit:s.unit} : {}),...(s.id!==undefined?{id:s.id}:{}),...(s.label!==undefined?{label:s.label}:{})}))} : {}),
-  })) as Metric[];
-}
 export function configErrors(component: Component, config: Config): string[] {
   const validate = configValidator(component.configSchema).compile(component.configSchema);
   validate(config);
@@ -139,6 +109,13 @@ export function assertComponent(value: unknown): asserts value is Component {
   try { configValidator(schema as Component['configSchema']).compile(schema); } catch { throw new Error('配置 Schema 校验失败，请检查字段定义与 $schema 版本。当前支持 draft-07 与 draft-2020-12 的表单子集。'); }
   if (m.runtime.type === 'static') assertMetrics(value.metrics);
 }
+function assertMobileLayout(layout:any,variants:{id:string}[]) {
+  const m=layout?.mobile;if(m===undefined)return;
+  if(!object(m)||Object.keys(m).some(k=>!['variant','position','horizontalPosition'].includes(k))||!variants.some(v=>v.id===m.variant))throw new Error('手机卡片尺寸无效。');
+  const p=m.position,h=m.horizontalPosition;
+  if(p!==undefined&&(!object(p)||!Number.isInteger(p.column)||!Number.isInteger(p.row)||!Number.isInteger(p.columns)||p.columns<1||p.columns>12||p.column<0||p.column>=p.columns||p.row<0||p.row>=10000))throw new Error('手机卡片位置无效。');
+  if(h!==undefined&&(!object(h)||!Number.isInteger(h.column)||!Number.isInteger(h.row)||!Number.isInteger(h.rows)||h.rows<1||h.rows>8||h.column<0||h.column>=10000||h.row<0||h.row>=h.rows))throw new Error('手机横向位置无效。');
+}
 export function assertWorkspace(value: unknown): asserts value is Workspace {
   if (!object(value) || value.schema !== 'progress/workspace/v1' || !text(value.name) || !['light', 'dark', 'system'].includes(value.theme) || !Array.isArray(value.components) || !Array.isArray(value.instances) || !Array.isArray(value.cards)) throw new Error('工作区文件格式或版本无效。');
   if (value.components.length > 100 || value.instances.length > 500 || value.cards.length > 1000) throw new Error('工作区超过原型支持的大小。');
@@ -162,6 +139,7 @@ export function assertWorkspace(value: unknown): asserts value is Workspace {
     if(instance.connectionIds!==undefined&&(!Array.isArray(instance.connectionIds)||instance.connectionIds.length>12||new Set(instance.connectionIds).size!==instance.connectionIds.length||instance.connectionIds.some((id:unknown)=>!value.connections?.some((c:any)=>c.id===id))))throw new Error('实例的连接引用无效。');
     if(instance.connectionStrategy!==undefined&&!['automatic','direct','relay'].includes(instance.connectionStrategy))throw new Error('连接策略无效。');
     if (instance.demo !== undefined && typeof instance.demo !== 'boolean') throw new Error('示例标记无效。');
+    if(instance.backgroundCollection!==undefined&&(typeof instance.backgroundCollection!=='boolean'||component.manifest.runtime.type!=='http'))throw new Error('后台采集配置无效。');
     if (instance.networkConsent !== undefined && typeof instance.networkConsent !== 'boolean') throw new Error('权限标记无效。');
     if (instance.refreshInterval !== undefined && (!Number.isInteger(instance.refreshInterval) || instance.refreshInterval < 5 || instance.refreshInterval > 86400 || component.manifest.runtime.type !== 'http')) throw new Error('刷新间隔需要为 5–86400 秒的整数，仅用于网络连接。');
   }
@@ -180,6 +158,7 @@ export function assertWorkspace(value: unknown): asserts value is Workspace {
     if (card.layout !== undefined) {
       const component = value.components.find((c: Component) => c.manifest.id === value.instances.find((i: any) => i.id === card.instanceId).componentId);
       if (!object(card.layout) || !layoutsFor(component).variants.some(v => v.id === card.layout.variant)) throw new Error('此组件不支持所选卡片尺寸。');
+      assertMobileLayout(card.layout,layoutsFor(component).variants);
       const p = card.layout.position;
       if (p !== undefined && (!object(p) || !Number.isInteger(p.column) || !Number.isInteger(p.row) || !Number.isInteger(p.columns) || p.columns < 1 || p.columns > 12 || p.column < 0 || p.column >= p.columns || p.row < 0 || p.row >= 10000)) throw new Error('卡片位置必须使用有效的整数格位。');
       const h=card.layout.horizontalPosition;
@@ -196,6 +175,7 @@ export function assertWorkspace(value: unknown): asserts value is Workspace {
       for(const id of group.cardIds){if(!text(id)||grouped.has(id)||!value.cards.some((c:any)=>c.id===id&&c.folderId===folder))throw new Error('组合文件夹的成员引用无效。');grouped.add(id);}
       if(group.layout!==undefined) {
         if(!object(group.layout)||!officialLayouts.variants.some(v=>v.id===group.layout.variant))throw new Error('组合文件夹尺寸无效。');
+        assertMobileLayout(group.layout,officialLayouts.variants);
         const p=group.layout.position,h=group.layout.horizontalPosition;
         if(p!==undefined&&(!object(p)||!Number.isInteger(p.column)||!Number.isInteger(p.row)||!Number.isInteger(p.columns)||p.columns<1||p.columns>12||p.column<0||p.column>=p.columns||p.row<0||p.row>=10000))throw new Error('组合文件夹位置无效。');
         if(h!==undefined&&(!object(h)||!Number.isInteger(h.column)||!Number.isInteger(h.row)||!Number.isInteger(h.rows)||h.rows<1||h.rows>8||h.column<0||h.column>=10000||h.row<0||h.row>=h.rows))throw new Error('组合文件夹横向位置无效。');

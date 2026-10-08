@@ -1,10 +1,13 @@
+import {extensionAvailable,extensionRequest} from './core/extension';
+import {useLayoutProfile} from './hooks/useLayoutProfile';
+import {writeLayout} from './core/grid';
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { App as NativeApp } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, FileArchive, FileInput, FileOutput, Grid2X2, LayoutDashboard, Layers3, Menu, Folder, Star, Briefcase, Heart, PanelLeftClose, Pencil, Minus, ArrowUp, ArrowDown, Plus, RefreshCw, Search, Settings, X } from 'lucide-react';
 import { folderWorkspace, migrateFolders, moveCard, duplicateFolder, reorderFolder } from './core/folders';
 import { builtins, demoWorkspace, emptyWorkspace } from './core/components';
-import { cardsBundle, clone, colors, compatibleRenderers, defaultConfig, refreshInterval, removeCards, restoreCards, uid, type Card, type Component, type Config, type Instance, type Metric, type Renderer, type Workspace } from './core/model';
+import { cardsBundle, clone, layoutSizes, colors, compatibleRenderers, defaultConfig, refreshInterval, removeCards, restoreCards, uid, type Card, type Component, type Config, type Instance, type Metric, type Renderer, type Workspace } from './core/model';
 import { importFile, mergeWorkspace, packageWorkspace, portableWorkspace, type ConflictMode } from './core/packages';
 import { download, saveWorkspace } from './core/storage';
 import { configErrors } from './core/validation';
@@ -42,6 +45,7 @@ const rendererNames: Record<Renderer, string> = { bar: '进度条', ring: '环�
 
 
 export function App({ initialWorkspace, storageError }: { initialWorkspace: Workspace; storageError?: string }) {
+  const profile=useLayoutProfile();
   const [workspace, setWorkspace] = useState(initialWorkspace);
   const [view, setView] = useState<View>('dashboard');
   const pageMotion=usePageMotion(view);
@@ -119,14 +123,14 @@ export function App({ initialWorkspace, storageError }: { initialWorkspace: Work
   const duplicateCard = (card: Card) => {
     const group=groupForCard(workspace,card.id);if(group){setWorkspace(current=>duplicateGroup(current,group.id));notify('已复制组合。');return;}
     const instance = workspace.instances.find(i => i.id === card.instanceId)!;
-    setWorkspace(current => ({ ...current, cards: [...current.cards, { ...card, id: uid(), title: `${card.title ?? instance.name} · 副本`, ...(card.layout ? { layout: { variant: card.layout.variant } } : {}) }] })); notify('已复制卡片。');
+    setWorkspace(current => ({ ...current, cards: [...current.cards, { ...card, id: uid(), title: `${card.title ?? instance.name} · 副本`, ...(card.layout ? { layout: layoutSizes(card.layout) } : {}) }] })); notify('已复制卡片。');
   };
   const selectComponent = (component: Component) => { setPresetModal(false); if (component.manifest.id === 'dev.progress.http') component = { ...component, manifest:{...component.manifest,name:componentName(component)} }; if(component.manifest.id==='dev.progress.quota')setProviderPicker(true);else setEditor({ component,provider:component.manifest.quotaProvider }); };
   const openExport = (ids = workspace.cards.map(card => card.id)) => setExportSelection(ids);
   function compactFolder(current:Workspace,id=folderId) {
     if(current.autoFill===false)return current;
     const horizontal=current.scrollDirection==='horizontal',limit=horizontal?(gridController.current?.rows??2):(gridController.current?.columns??2);
-    return commitPlacements(current,(horizontal?fillHorizontalHoles:fillHoles)(resolvePlacements(folderWorkspace(current,id),limit,horizontal),limit),limit,undefined,horizontal);
+    return commitPlacements(current,(horizontal?fillHorizontalHoles:fillHoles)(resolvePlacements(folderWorkspace(current,id),limit,horizontal,profile),limit),limit,undefined,horizontal,profile);
   }
   function openVisual(card:Card){setFocusedCard(null);const group=groupForCard(workspace,card.id);if(group)setGroupId(group.id);else setDetailCard(card.id);}
   function removeVisual(card:Card){const group=groupForCard(workspace,card.id);if(group){const before=clone(group);setWorkspace(current=>compactFolder(dissolveGroup(current,group.id)));setToast({message:'组合已解散，成员卡片已保留。',undo:()=>setWorkspace(current=>current.cards.filter(c=>before.cardIds.includes(c.id)).length===before.cardIds.length&&!current.cardGroups?.some(g=>g.cardIds.some(id=>before.cardIds.includes(id)))?{...current,cardGroups:[...(current.cardGroups??[]),before]}:current)});}else deleteCards([card.id],'卡片已移除。');}
@@ -174,11 +178,11 @@ export function App({ initialWorkspace, storageError }: { initialWorkspace: Work
       if (editor.card) {
         const horizontal=workspace.scrollDirection==='horizontal';
         const limit=horizontal?(gridController.current?.rows??2):(gridController.current?.columns??2);
-        const slots=resolvePlacements(scoped,limit,horizontal),slot=slots.find(p=>p.id===editor.card!.id);
+        const slots=resolvePlacements(scoped,limit,horizontal,profile),slot=slots.find(p=>p.id===editor.card!.id);
         const updated=next.cards.find(c=>c.id===editor.card!.id)!;
         if(slot&&!groupForCard(next,updated.id)) {
-          const preference=preferredVariant(updated,editor.component),variant=horizontal?fittingHorizontalVariant(editor.component,preference,limit):fittingVariant(editor.component,preference,limit);
-          if(variant){const moved=(horizontal?reflowHorizontal:reflow)(slots,slot.id,{column:horizontal?slot.column:Math.min(slot.column,limit-variant.span.columns),row:horizontal?Math.min(slot.row,limit-variant.span.rows):slot.row},variant,limit);if(moved)next=commitPlacements(next,moved,limit,{id:slot.id,variant:preference},horizontal);}
+          const preference=preferredVariant(updated,editor.component,profile),variant=horizontal?fittingHorizontalVariant(editor.component,preference,limit):fittingVariant(editor.component,preference,limit);
+          if(variant){const moved=(horizontal?reflowHorizontal:reflow)(slots,slot.id,{column:horizontal?slot.column:Math.min(slot.column,limit-variant.span.columns),row:horizontal?Math.min(slot.row,limit-variant.span.rows):slot.row},variant,limit);if(moved)next=commitPlacements(next,moved,limit,{id:slot.id,variant:preference},horizontal,profile);}
         }
       }
       next = migrateFolders(next); for (const c of next.cards) if (!workspace.cards.some(old => old.id === c.id)) c.folderId = folderId;
@@ -225,7 +229,7 @@ export function App({ initialWorkspace, storageError }: { initialWorkspace: Work
         {view === 'dashboard' && <>
           {allDemo && <div className="section-toolbar"><span className="demo-workspace-label">示例工作区</span><button className="text-button" onClick={() => deleteCards(demoIds, '已移除示例卡片。')}>移除示例</button></div>}
           {filtered.length || layoutEditing && workspace.cards.length ? <WorkspaceGrid key={`${folderId}:${workspace.scrollDirection??'vertical'}`} focusCardId={focusedCard} workspace={scoped} visibleIds={filtered.map(card => card.id)} snapshots={data} now={now} online={online} editing={layoutEditing} onEditing={editLayout} layoutCard={layoutCard} onLayoutCard={setLayoutCard} controller={gridController}
-            onCommit={(slots, columns, preference) => setWorkspace(current => commitPlacements(current, current.autoFill!==false && preference ? (current.scrollDirection==='horizontal'?fillHorizontalHoles:fillHoles)(slots, columns, preference.id) : slots, columns, preference,current.scrollDirection==='horizontal'))} onGroup={(source,target)=>{setWorkspace(current=>compactFolder(combineCards(current,source,target)));notify('已组成文件夹。');}} onMember={card=>setDetailCard(card.id)} onEdit={card=>{const group=groupForCard(workspace,card.id);if(group)setGroupId(group.id);else editCard(card);}} onDuplicate={duplicateCard} onExport={card => openExport(groupForCard(workspace,card.id)?.cardIds??[card.id])} onMove={card => setMovingCard(card)} onRemove={removeVisual} onDetails={openVisual} onRetry={refresh}/>
+            onCommit={(slots, columns, preference) => setWorkspace(current => commitPlacements(current, current.autoFill!==false && preference ? (current.scrollDirection==='horizontal'?fillHorizontalHoles:fillHoles)(slots, columns, preference.id) : slots, columns, preference,current.scrollDirection==='horizontal',profile))} onGroup={(source,target)=>{setWorkspace(current=>compactFolder(combineCards(current,source,target)));notify('已组成文件夹。');}} onMember={card=>setDetailCard(card.id)} onEdit={card=>{const group=groupForCard(workspace,card.id);if(group)setGroupId(group.id);else editCard(card);}} onDuplicate={duplicateCard} onExport={card => openExport(groupForCard(workspace,card.id)?.cardIds??[card.id])} onMove={card => setMovingCard(card)} onRemove={removeVisual} onDetails={openVisual} onRetry={refresh}/>
             : <section className="empty-state"><div><LayoutDashboard size={28}/></div><h2>{scoped.cards.length ? '没有匹配的卡片' : '还没有卡片'}</h2><div className="empty-actions"><button className="button primary" onClick={() => setPresetModal(true)}>{scoped.cards.length ? '显示全部' : '添加组件'}</button>{!scoped.cards.length && <button className="button secondary" onClick={addExamples}>查看示例</button>}</div></section>}
         </>}
         {view === 'components' && <><div className="library-toolbar"><label className="search-box"><Search size={17}/><input aria-label="搜索组件" placeholder="搜索组件" value={componentSearch} onChange={event => setComponentSearch(event.target.value)}/>{componentSearch && <button aria-label="清除组件搜索" onClick={() => setComponentSearch('')}><X size={16}/></button>}</label><button className="button secondary" onClick={() => setImportModal(true)}><FileInput size={17}/>导入组件</button></div>
@@ -244,7 +248,7 @@ export function App({ initialWorkspace, storageError }: { initialWorkspace: Work
           <AgentSettings/>
           <section className="settings-panel"><h2>数据迁移</h2><div className="settings-row"><strong>导出工作区</strong><button className="button secondary" onClick={() => openExport()}><FileOutput size={17}/>导出</button></div><div className="settings-row"><strong>导入工作区 / 卡片</strong><button className="button secondary" onClick={() => setImportModal(true)}><FileInput size={17}/>导入</button></div><div className="settings-row"><strong>示例卡片</strong>{demoIds.length ? <button className="button secondary" onClick={() => deleteCards(demoIds, '已移除示例卡片。')}>移除示例</button> : <button className="button secondary" onClick={addExamples}>查看示例</button>}</div></section>
           <section className="settings-panel danger-panel"><h2>危险操作</h2><div className="settings-row"><div><strong>创建空工作区</strong><span>清空卡片和连接，保留已安装组件。</span></div><button className="button secondary danger" onClick={() => setConfirmReset(true)}>清空</button></div></section>
-          <section className="settings-panel"><h2>开发者</h2><p className="form-hint">Progress v0.6.4 · 工作区格式 progress/workspace/v1 · {workspace.folders?.length ?? 1} 个文件夹，{workspace.instances.length} 个实例。数据源与采样时间可在卡片的数据详情中查看。</p></section>
+          <section className="settings-panel"><h2>开发者</h2><p className="form-hint">Progress v0.6.5 · 工作区格式 progress/workspace/v1 · {workspace.folders?.length ?? 1} 个文件夹，{workspace.instances.length} 个实例。数据源与采样时间可在卡片的数据详情中查看。</p></section>
           <details className="advanced-details about-app"><summary>关于 Progress</summary><p>v0.6.4 · 数据保存在当前设备。网络数据在应用可见时刷新。</p></details>
         </div>}
       </div>
@@ -271,6 +275,7 @@ export function App({ initialWorkspace, storageError }: { initialWorkspace: Work
     <OperationLayer open={!!activeGroup} source={`[data-operation-source="${activeGroup?.cardIds[0]??''}"]`} mode="detail" onClosed={()=>{pendingGroup.current?.();pendingGroup.current=null;}}>
       {activeGroup&&<GroupDetails key={activeGroup.id} group={activeGroup} workspace={workspace} snapshots={data} now={now} online={online} onClose={()=>setGroupId(null)} onSave={(name,style,simple)=>{setWorkspace(current=>({...current,cardGroups:current.cardGroups?.map(g=>g.id===activeGroup.id?{...g,name,style,simple}:g)}));setGroupId(null);notify('已保存组合。');}} onDissolve={()=>leaveGroup(()=>{setWorkspace(current=>compactFolder(dissolveGroup(current,activeGroup.id)));notify('组合已解散，成员卡片已保留。');})} onMember={card=>leaveGroup(()=>setDetailCard(card.id))} onEditMember={card=>leaveGroup(()=>editCard(card))}/>}
     </OperationLayer>
+    {incoming&&<RestoreDialog current={workspace} incoming={incoming} onClose={()=>setIncoming(null)} onSave={next=>{const restored=migrateFolders(next);setWorkspace(restored);enablePersistence(true);setFolderId(restored.folders![0].id);setIncoming(null);selectView('dashboard');notify('工作区已导入。');}}/>}
     {confirmReset && <Modal title="创建空工作区？" subtitle="当前卡片和连接将被清空。可以先导出备份。" onClose={() => setConfirmReset(false)}><div className="modal-body"><p>将清空 {workspace.cards.length} 张卡片。</p></div><div className="modal-actions"><button className="button secondary" onClick={() => { setConfirmReset(false); openExport(); }}><FileOutput size={16}/>先导出</button><button className="button primary destructive" onClick={() => { const before = clone(workspace); setWorkspace({ ...emptyWorkspace(), components: workspace.components, theme: workspace.theme }); enablePersistence(true); setConfirmReset(false); selectView('dashboard'); setToast({ message: '工作区已清空。', undo: () => { setWorkspace(current => ({ ...restoreCards(current, before, before.cards.map(card => card.id)), name: before.name })); setToast({ message: '已撤销清空。' }); } }); }}>清空工作区</button></div></Modal>}
     {uninstalling&&<Modal title={`卸载 ${uninstalling.manifest.name}？`} onClose={()=>setUninstalling(null)}><div className="modal-body"><p className="form-hint">此组件的所有卡片和实例会一并移除。</p></div><div className="modal-actions"><button className="button secondary" onClick={()=>setUninstalling(null)}>取消</button><button className="button secondary danger" onClick={()=>{const ids=workspace.instances.filter(i=>i.componentId===uninstalling.manifest.id).map(i=>i.id);const next=removeCards(workspace,workspace.cards.filter(c=>ids.includes(c.instanceId)).map(c=>c.id));setWorkspace({...next,components:next.components.filter(c=>c.manifest.id!==uninstalling.manifest.id)});setUninstalling(null);notify('组件已卸载。');}}>卸载组件</button></div></Modal>}
     {folderEditor && <FolderDialog workspace={workspace} id={folderEditor} initialDeleting={removingFolder === folderEditor} onReorder={offset => setWorkspace(current => reorderFolder(current, folderEditor, offset))} onClose={() => {setFolderEditor(null);setRemovingFolder(null);}} onSave={next => {
@@ -336,6 +341,7 @@ function CodexEditorDialog(props: Parameters<typeof EditorDialog>[0]) {
 function ProviderEditorDialog(props:Parameters<typeof EditorDialog>[0]) { return <ProviderWizard {...props.editor} provider={props.editor.provider??manualProvider} workspace={props.workspace} onClose={props.onClose} onSave={props.onSave} onWorkspaceChange={props.onWorkspaceChange} onCardAction={props.onCardAction}/>; }
 
 function EditorDialog({ editor, workspace, now, initialMetrics, onClose, onSave, onCardAction, onWorkspaceChange }: { onWorkspaceChange:(w:Workspace)=>void; editor: Editor; workspace: Workspace; now: number; initialMetrics?: Metric[]; onClose: () => void; onSave: (next: Workspace, quota?: CodexUsage) => void; onCardAction: (action: 'layout' | 'duplicate' | 'export' | 'remove' | 'details') => void }) {
+  const profile=useLayoutProfile();
   const { component, instance, card, appearance } = editor;
   const [name, setName] = useState(instance?.name ?? component.manifest.name);
   const [title, setTitle] = useState(card?.title ?? '');
@@ -352,8 +358,10 @@ function EditorDialog({ editor, workspace, now, initialMetrics, onClose, onSave,
   const [ringCenter,setRingCenter]=useState<NonNullable<Card['ringCenter']>>(card?.ringCenter??'auto');
   const [display] = useState<NonNullable<Card['display']>>(() => ({ ...card?.display }));
   const [displayPreferences,setDisplayPreferences]=useState<Card['displayPreferences']>(card?.displayPreferences);
-  const [layoutVariant, setLayoutVariant] = useState(card ? preferredVariant(card, component) : layoutsFor(component).default);
+  const [layoutVariant, setLayoutVariant] = useState(card ? preferredVariant(card, component,profile) : layoutsFor(component).default);
   const previewVariant = layoutsFor(component).variants.find(v => v.id === layoutVariant)!;
+  const [backgroundCollection,setBackgroundCollection]=useState(instance?.backgroundCollection??false),[hasExtension,setHasExtension]=useState(false);
+  useEffect(()=>{void extensionAvailable().then(setHasExtension);},[]);
   const [networkConsent, setNetworkConsent] = useState(instance?.networkConsent ?? false);
   const [interval, setIntervalValue] = useState(instance ? refreshInterval(component, instance) : component.manifest.runtime.type === 'http' ? component.manifest.runtime.refresh_interval ?? 15 : 15);
   const [metrics, setMetrics] = useState<Metric[]>(initialMetrics ?? []);
@@ -363,7 +371,7 @@ function EditorDialog({ editor, workspace, now, initialMetrics, onClose, onSave,
   const [testing, setTesting] = useState(false);
   const abort = useRef<AbortController | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
-  const candidate: Instance = { id: instance?.id ?? 'preview', componentId: component.manifest.id, name: name.trim(), config, createdAt: instance?.createdAt ?? new Date(now).toISOString(), networkConsent, ...(component.manifest.runtime.type === 'http' ? { refreshInterval: interval } : {}) };
+  const candidate: Instance = { id: instance?.id ?? 'preview', componentId: component.manifest.id, name: name.trim(), config, createdAt: instance?.createdAt ?? new Date(now).toISOString(), networkConsent, ...(component.manifest.runtime.type === 'http' ? { refreshInterval: interval,backgroundCollection } : {}) };
   const preview = metrics.find(m => selected.includes(m.id)) ?? metrics[0] ?? localMetrics(component, candidate)[0];
   const allowed: Renderer[] = preview ? compatibleRenderers(preview) : ['bar', 'ring', 'number', 'fill'];
   const activeRenderer = allowed.includes(renderer) ? renderer : 'number';
@@ -397,16 +405,17 @@ function EditorDialog({ editor, workspace, now, initialMetrics, onClose, onSave,
       const saved: Instance = { ...candidate, id: instanceId, demo: component.manifest.runtime.type === 'static' && !!instance?.demo };
       next.instances = [...next.instances.filter(i => i.id !== instanceId), saved];
     }
-    if (card) next.cards = next.cards.map(c => c.id === card.id ? { ...c, metricId: selected[0], renderer: activeRenderer, color, display, displayPreferences, fillDirection, ringCenter, layout: { ...c.layout, variant: layoutVariant }, ...(title.trim() ? { title: title.trim() } : { title: undefined }) } : c);
-    else for (const id of selected) next.cards.push({ id: uid(), instanceId, metricId: id, renderer: compatibleRenderers(metrics.find(m => m.id === id)).includes(renderer) ? renderer : 'number', color, display, displayPreferences, fillDirection, ringCenter, layout: { variant: layoutVariant } });
+    if (card) next.cards = next.cards.map(c => c.id === card.id ? { ...c, metricId: selected[0], renderer: activeRenderer, color, display, displayPreferences, fillDirection, ringCenter, layout: writeLayout(c.layout,{variant:layoutVariant},profile), ...(title.trim() ? { title: title.trim() } : { title: undefined }) } : c);
+    else for (const id of selected) next.cards.push({ id: uid(), instanceId, metricId: id, renderer: compatibleRenderers(metrics.find(m => m.id === id)).includes(renderer) ? renderer : 'number', color, display, displayPreferences, fillDirection, ringCenter, layout: writeLayout(undefined,{variant:layoutVariant},profile) });
     onSave(next);
   }
-  return <Modal title={appearance ? '卡片外观' : instance ? '编辑配置' : component.manifest.name} subtitle={instance ? instance.name : undefined} onClose={onClose} wide dirtyKey={JSON.stringify({name,title,config,renderer,color,display,displayPreferences,fillDirection,ringCenter,layoutVariant,networkConsent,interval,selected})}>
+  return <Modal title={appearance ? '卡片外观' : instance ? '编辑配置' : component.manifest.name} subtitle={instance ? instance.name : undefined} onClose={onClose} wide dirtyKey={JSON.stringify({name,title,config,renderer,color,display,displayPreferences,fillDirection,ringCenter,layoutVariant,networkConsent,backgroundCollection,interval,selected})}>
     <div className="editor-body">
       {!appearance && <div className="editor-steps"><span className={step === 0 ? 'active' : ''}><i>1</i>配置</span><span className="step-line"/><span className={step === 1 ? 'active' : ''}><i>2</i>预览与添加</span></div>}
       <MotionContent stage={step}>{step === 0 ? <><label className="field"><span>名称<i className="required-dot"/></span><input data-autofocus="" value={name} maxLength={100} onChange={event => { setName(event.target.value); setErrors([]); }}/></label>
         <SchemaForm schema={component.configSchema} component={component} config={config} onChange={next => { setConfig(next); setErrors([]); }}/>
         {component.manifest.runtime.type === 'http' && <label className="field"><span>刷新间隔（秒）</span><input type="number" min={5} max={86400} step={1} value={Number.isFinite(interval) ? interval : ''} onChange={event => { setIntervalValue(event.target.value ? Number(event.target.value) : NaN); setErrors([]); }} onBlur={() => { if (!Number.isInteger(interval) || interval < 5 || interval > 86400) setErrors(['刷新间隔需要为 5–86400 秒的整数。']); }}/></label>}
+        {component.manifest.runtime.type==='http'&&<><p className="form-hint">服务地址应返回进度 JSON，网站首页无法直接提供进度。</p><label className="network-permission"><input type="checkbox" disabled={!hasExtension||!networkConsent} checked={backgroundCollection} onChange={e=>setBackgroundCollection(e.target.checked)}/><span><strong>关闭网页后继续采集</strong><small>{hasExtension?'使用已授权的 Chrome 后台插件，最低间隔 30 秒。':'需要安装 Progress Chrome 后台插件。移动端仍在页面内采集。'}</small></span></label>{hasExtension&&<button className="text-button" onClick={()=>void extensionRequest('OPTIONS')}>授权接口域名</button>}</>}
         {sharedCount > 1 && <div className="notice">此配置由 {sharedCount} 张卡片共享，保存后会同步更新。</div>}
         {component.manifest.runtime.type === 'http' && <label className="network-permission"><input type="checkbox" checked={networkConsent} onChange={event => { setNetworkConsent(event.target.checked); setErrors([]); }}/><span><strong>允许此连接访问网络</strong><small>只访问配置的服务地址。导出后在新设备上重新确认。</small></span></label>}
       </> : <div className="preview-layout"><div className="preview-controls">

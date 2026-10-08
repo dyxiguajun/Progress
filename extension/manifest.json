@@ -1,0 +1,8 @@
+{
+  "manifest_version":3,"name":"Progress Background","version":"0.6.5","minimum_chrome_version":"120",
+  "description":"Keep approved Progress JSON sources up to date while the web page is closed.",
+  "permissions":["alarms","storage"],"optional_host_permissions":["https://*/*","http://*/*"],
+  "background":{"service_worker":"worker.js","type":"module"},
+  "options_page":"options.html","action":{"default_title":"Progress Background"},
+  "content_scripts":[{"matches":["https://progress-dyxiguajun.pages.dev/*","http://127.0.0.1/*","http://localhost/*"],"js":["content.js"],"run_at":"document_start"}]
+}

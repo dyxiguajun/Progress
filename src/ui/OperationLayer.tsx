@@ -51,16 +51,17 @@ export function OperationLayer({open,source,kind='card',mode,children,onClosed}:
   }
   function naturalRect():SurfaceRect {
     const node=material.current!, frame=shell.current!;
-    const wide=!!node.querySelector('.modal-content.wide'),width=Math.min(innerWidth-24,kind==='search'?680:kind==='add'?288:wide?860:660);
+    const visual=window.visualViewport,viewWidth=Math.min(innerWidth,visual?.width??innerWidth),viewHeight=Math.min(innerHeight,visual?.height??innerHeight),viewLeft=visual?.offsetLeft??0,viewTop=visual?.offsetTop??0;
+    const wide=!!node.querySelector('.modal-content.wide'),width=Math.min(viewWidth-24,kind==='search'?680:kind==='add'?288:wide?860:660);
     const priorTransform=frame.style.transform,priorHeight=node.style.height;
     frame.style.transform='none';frame.style.width=`${width}px`;frame.style.height='auto';node.style.height='auto';
     // Include fractional pixels and material borders. scrollHeight loses both,
     // which otherwise creates a two-pixel jump at every DOM handoff.
-    const height=Math.min(node.getBoundingClientRect().height,innerHeight-24);
+    const height=Math.min(node.getBoundingClientRect().height,viewHeight-24);
     node.style.height=priorHeight;frame.style.transform=priorTransform;
     const sourceBounds=document.querySelector<HTMLElement>(sourceSelector.current)?.getBoundingClientRect();
-    const left=kind==='add'&&sourceBounds?Math.max(12,Math.min(sourceBounds.right-width,innerWidth-width-12)):(innerWidth-width)/2;
-    const top=kind==='search'?Math.min(96,Math.max(12,(innerHeight-height)/3)):kind==='add'&&sourceBounds?Math.max(12,Math.min(sourceBounds.top,innerHeight-height-12)):Math.max(12,(innerHeight-height)/2);
+    const left=kind==='add'&&sourceBounds?Math.max(12,Math.min(sourceBounds.right-width,innerWidth-width-12)):viewLeft+(viewWidth-width)/2;
+    const top=kind==='search'?viewTop+Math.min(96,Math.max(12,(viewHeight-height)/3)):kind==='add'&&sourceBounds?Math.max(12,Math.min(sourceBounds.top,innerHeight-height-12)):viewTop+Math.max(12,(viewHeight-height)/2);
     return {left,top,width,height};
   }
   function place(rect:SurfaceRect){Object.assign(shell.current!.style,{left:`${rect.left}px`,top:`${rect.top}px`,width:`${rect.width}px`,height:`${rect.height}px`,opacity:'1',transform:'none'});applyContinuousGeometry(material.current!,kind==='add'?18:24);}
@@ -159,7 +160,7 @@ export function OperationLayer({open,source,kind='card',mode,children,onClosed}:
       const to=canShare?rectOf(sourceElement!):from;
       if(canShare){shared(content,sourceElement!,duration,from,to,delay);sourceExtras(sourceElement!,false,duration,delay,from,to);animate(frame,[{...frameOf(from),opacity:1},{...frameOf(to),opacity:1}],duration,delay);animate(content,[{backgroundColor:getComputedStyle(content).backgroundColor},{backgroundColor:getComputedStyle(sourceElement!).backgroundColor}],duration,delay);}
       else animate(frame,[{opacity:1,transform:'none'},{opacity:0,transform:'scale(.97)'}],duration,delay);
-      animate(page,[{opacity:1},{opacity:0,offset:.45},{opacity:0}],duration,delay);
+      animate(page,[{opacity:getComputedStyle(page).opacity},{opacity:0,offset:.45},{opacity:0}],duration,delay);
     }
     timer.current=setTimeout(()=>{
       if(token!==generation.current)return;
@@ -185,15 +186,15 @@ export function OperationLayer({open,source,kind='card',mode,children,onClosed}:
   useEffect(()=>{
     if(!present)return;
     let scheduled=0;
-    const resize=()=>{cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>{if(!openRef.current){localClose();return;}clearMotion();place(naturalRect());previousRect.current=rectOf(shell.current!);setPhase('open');});};
-    window.addEventListener('resize',resize);
+    const resize=()=>{cancelAnimationFrame(scheduled);scheduled=requestAnimationFrame(()=>{if(!openRef.current){transition(false);return;}const before=rectOf(shell.current!);clearMotion(true);const after=naturalRect();place(after);if(!reduced)animate(shell.current!,[frameOf(before),frameOf(after)],motionTokens.surfaceResize);previousRect.current=after;setPhase('open');});};
+    window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);
     const observer=new ResizeObserver(()=>{if(phase!=='open'||!openRef.current)return;const before=previousRect.current,after=naturalRect();place(after);if(before&&(Math.abs(before.height-after.height)>1||Math.abs(before.width-after.width)>1)&&!reduced)animate(shell.current!,[frameOf(before),frameOf(after)],motionTokens.surfaceResize);previousRect.current=after;});
     const content=Array.from(material.current?.querySelectorAll('.modal-content')??[]).find(node=>!node.closest('.motion-outgoing'));
     if(content){observer.observe(content);content.querySelectorAll('.editor-body .motion-active,.details-body>details').forEach(node=>observer.observe(node));}
     const sourceElement=sourceNode.current,initial=sourceElement?rectOf(sourceElement):null;
     const sourceObserver=new ResizeObserver(()=>{if(phase!=='closing'||!sourceElement||!initial)return;const current=rectOf(sourceElement);if(!valid(sourceElement)||Math.abs(initial.width-current.width)>2||Math.abs(initial.height-current.height)>2)localClose();});
     if(sourceElement)sourceObserver.observe(sourceElement);
-    return()=>{observer.disconnect();sourceObserver.disconnect();window.removeEventListener('resize',resize);cancelAnimationFrame(scheduled);};
+    return()=>{observer.disconnect();sourceObserver.disconnect();window.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);cancelAnimationFrame(scheduled);};
   },[present,phase,mode,reduced]);
   useEffect(()=>()=>{clearMotion();releaseSource();root.current?.close();},[]);
   useEffect(()=>{if(!present||!reduced)return;if(phase==='closing')localClose();else {clearMotion();place(naturalRect());setPhase('open');focusSurface();}},[reduced]);

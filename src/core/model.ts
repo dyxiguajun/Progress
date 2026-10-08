@@ -30,7 +30,12 @@ export type Runtime =
 export type GridSpan = { columns: number; rows: number };
 export type LayoutVariant = { id: string; label?: string; span: GridSpan; fallback?: string };
 export type CardLayouts = { default: string; variants: LayoutVariant[] };
-export type CardLayout = { variant: string; position?: { column: number; row: number; columns: number }; horizontalPosition?: { column:number;row:number;rows:number } };
+export type LayoutProfile = 'desktop' | 'mobile';
+export type LayoutPosition = { variant: string; position?: { column: number; row: number; columns: number }; horizontalPosition?: { column:number;row:number;rows:number } };
+export type CardLayout = LayoutPosition & { mobile?: LayoutPosition };
+export function layoutSizes(layout?:CardLayout):CardLayout|undefined {
+  return layout ? {variant:layout.variant,...(layout.mobile?{mobile:{variant:layout.mobile.variant}}:{})} : undefined;
+}
 export type Manifest = {
   schema: 'progress/module/v1'; id: string; name: string; version: string; description: string;
   author: string; runtime: Runtime; configuration: { schema: string };
@@ -42,7 +47,7 @@ export type Component = {
 };
 export type Instance = {
   id: string; componentId: string; name: string; config: Config; createdAt: string;
-  demo?: boolean; networkConsent?: boolean;
+  demo?: boolean; networkConsent?: boolean; backgroundCollection?:boolean;
   refreshInterval?: number; connectionIds?: string[]; connectionStrategy?: 'automatic' | 'direct' | 'relay';
 };
 export type Card = {

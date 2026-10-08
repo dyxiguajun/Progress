@@ -1,3 +1,4 @@
+import {syncBackground} from '../core/extension';
 import { useEffect, useRef, useState } from "react";
 import { refreshInterval, type Workspace } from "../core/model";
 import {
@@ -27,6 +28,7 @@ import { type Snapshot } from "../core/sourceState";
 export type { Snapshot } from "../core/sourceState";
 
 export function useMetrics(workspace: Workspace) {
+  useEffect(()=>{void syncBackground(workspace).catch(()=>{/* Connection testing reports actionable errors. */});},[workspace.instances,workspace.components]);
   const [remote, setRemote] = useState<Record<string, Snapshot>>({});
   const signatures = useRef<Record<string, string>>({});
   const retry = useRef<(id?: string, manual?: boolean) => void>(() => {});

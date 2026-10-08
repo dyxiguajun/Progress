@@ -1,3 +1,4 @@
+import {useLayoutProfile} from '../hooks/useLayoutProfile';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { ArrowRight, Copy, FileOutput, Grid2X2, Minus, Settings, Trash2 } from 'lucide-react';
 import { ContextVeil } from './shared';
@@ -34,17 +35,18 @@ type Preview = { id: string; mode: 'drag' | 'resize'; slots: Placement[]; ghost:
 
 export function WorkspaceGrid(props: Props) {
   const { workspace, editing, onEditing, layoutCard, onLayoutCard } = props;
+  const profile=useLayoutProfile();
   const root = useRef<HTMLElement>(null),viewport=useRef<HTMLDivElement>(null);
   const horizontal=workspace.scrollDirection==='horizontal';
   const visualCards=useMemo(()=>visibleGroupCards(workspace),[workspace.cards,workspace.cardGroups]);
   const searchTarget=props.focusCardId?(groupForCard(workspace,props.focusCardId)?.cardIds[0]??props.focusCardId):null;
   const [width, setWidth] = useState(0);
   const [viewportHeight,setViewportHeight]=useState(Math.max(168,innerHeight-144));
-  const baseGrid=useMemo(()=>resolveGrid(width),[width]);
-  const horizontalGrid=useMemo(()=>resolveHorizontalGrid(width,viewportHeight),[width,viewportHeight]);
+  const baseGrid=useMemo(()=>resolveGrid(width,profile),[width,profile]);
+  const horizontalGrid=useMemo(()=>resolveHorizontalGrid(width,viewportHeight,profile),[width,viewportHeight,profile]);
   const horizontalRows=horizontalGrid.rows;
   const capacity=horizontal?horizontalRows:baseGrid.columns;
-  const slots=useMemo(()=>resolvePlacements(workspace,capacity,horizontal),[workspace.cards,workspace.components,workspace.instances,workspace.cardGroups,capacity,horizontal]);
+  const slots=useMemo(()=>resolvePlacements(workspace,capacity,horizontal,profile),[workspace.cards,workspace.components,workspace.instances,workspace.cardGroups,capacity,horizontal,profile]);
   const grid=useMemo(()=>horizontal?{...baseGrid,columns:Math.max(4,...slots.map(s=>s.column+s.span.columns))+4,cell:horizontalGrid.cell,rowHeight:horizontalGrid.cell,gap:horizontalGrid.gap,inset:0}:baseGrid,[horizontal,baseGrid,slots,horizontalGrid]);
   const [preview, setPreview] = useState<Preview | null>(null);
   const previewRef = useRef<Preview | null>(null), gesture = useRef<Gesture | null>(null), suppressClick = useRef(false);
@@ -94,7 +96,7 @@ export function WorkspaceGrid(props: Props) {
     element?.querySelector<HTMLElement>('article')?.focus({ preventScroll: true }); element?.scrollIntoView({ block: 'nearest',inline:'center', behavior: reduced ? 'auto' : 'smooth' });
   }, [searchTarget, width, reduced]);
   useEffect(() => {
-    if(width&&visualCards.some(card=>horizontal?!card.layout?.horizontalPosition:!card.layout?.position))props.onCommit(slots,capacity);
+    if(width&&visualCards.some(card=>horizontal?!(profile==='mobile'?card.layout?.mobile:card.layout)?.horizontalPosition:!(profile==='mobile'?card.layout?.mobile:card.layout)?.position))props.onCommit(slots,capacity);
   }, [width, slots, horizontal,capacity]);
   useEffect(() => {
     if (menu) menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
@@ -165,7 +167,7 @@ export function WorkspaceGrid(props: Props) {
     if (g.pointerType !== 'touch') root.current?.setPointerCapture(g.pointerId);
     const card = visibleGroupCards(callbacks.current.workspace).find(c => c.id === g.id)!;
     const component = layoutComponent(callbacks.current.workspace,card);
-    const next: Preview = { id:g.id, mode:'drag', slots:g.original, ghost:g.slot, x:0, y:0, preference:preferredVariant(card, component) };
+    const next: Preview = { id:g.id, mode:'drag', slots:g.original, ghost:g.slot, x:0, y:0, preference:preferredVariant(card, component,profile) };
     previewRef.current = next; setPreview(next);
   }
   function move(x: number, y: number, allowGrouping = true) {
@@ -205,7 +207,7 @@ export function WorkspaceGrid(props: Props) {
     if(intent.approach&&!intent.target){const deadline=intent.centerAt!==undefined?intent.centerAt+GROUP_CENTER_HOLD:intent.approachAt!+GROUP_APPROACH_IDLE;g.groupTimer=setTimeout(()=>{if(gesture.current===g)actions.current.move(g.x,g.y);},Math.max(1,deadline-at));}
     const retained = intent.approach?{slots:g.original,ghost:g.slot}:retainValidPlacement(previous, g.original, g.id, inside ? {column,row} : null, variant, horizontal?horizontalRows:capacity.columns,horizontal);
     const next: Preview = { id: g.id, mode: g.kind as 'drag' | 'resize', ...retained,
-      x: x - g.startX, y: y - g.startY, preference: g.kind === 'resize' ? retained.ghost.variant!.id : preferredVariant(card, component) };
+      x: x - g.startX, y: y - g.startY, preference: g.kind === 'resize' ? retained.ghost.variant!.id : preferredVariant(card, component,profile) };
     previewRef.current = next; setPreview(next);
     if (retained !== previous) say(`${g.kind === 'resize' ? '尺寸' : '位置'}：${variantLabel(retained.ghost.variant!)}，第 ${retained.ghost.row + 1} 行、第 ${retained.ghost.column + 1} 列`);
   }
@@ -272,7 +274,7 @@ export function WorkspaceGrid(props: Props) {
     transform: `translate(${grid.inset + slot.column * (grid.cell + grid.gap)}px, ${slot.row * (grid.rowHeight + grid.gap)}px)` });
   const visible = new Set(props.visibleIds);
   const contextCard = visualCards.find(c => c.id === visibleMenu?.id);
-  function accessibleChange(card: Card, column: number, row: number, preference = preferredVariant(card, componentFor(card))) {
+  function accessibleChange(card: Card, column: number, row: number, preference = preferredVariant(card, componentFor(card),profile)) {
     const variant = horizontal?fittingHorizontalVariant(componentFor(card),preference,horizontalRows):fittingVariant(componentFor(card), preference, grid.columns);
     if (!variant) { say('当前空间无法显示此尺寸。'); return; }
     const next = (horizontal?reflowHorizontal:reflow)(slots, card.id, { column: Math.min(column, grid.columns - variant.span.columns), row:horizontal?Math.min(row,horizontalRows-variant.span.rows):row }, variant, capacity);
@@ -281,7 +283,7 @@ export function WorkspaceGrid(props: Props) {
   return <>
     {!skipContextExit && shadePresence.present && <ContextVeil open={!!focusId} closing={shadePresence.closing} onClose={closeMenu}/>}
     <div ref={viewport} className={`workspace-scroll ${horizontal?'is-horizontal':''}`} tabIndex={horizontal?0:undefined} aria-label={horizontal?'横向卡片工作区':undefined}>
-    <section ref={root} className={`workspace-grid ${editing ? 'is-editing' : ''} ${preview ? 'is-manipulating' : ''} ${focusId?'has-context':''}`} aria-label="进度卡片" data-columns={grid.columns}
+    <section ref={root} className={`workspace-grid ${profile==='mobile'?'compact-grid':''} ${editing ? 'is-editing' : ''} ${preview ? 'is-manipulating' : ''} ${focusId?'has-context':''}`} aria-label="进度卡片" data-columns={grid.columns}
       style={{ ...(horizontal?{width:Math.max(width,...(preview?.slots??slots).map(s=>(s.column+s.span.columns)*(grid.cell+grid.gap)-grid.gap))+(editing?grid.cell:0)}:{}),height: horizontal?viewportHeight:rows * (grid.rowHeight + grid.gap) - grid.gap, '--cell-step': `${grid.cell + grid.gap}px`, '--row-step': `${grid.rowHeight + grid.gap}px`, opacity: width ? 1 : 0 } as CSSProperties}
       onPointerDown={begin}
       onClickCapture={event => { if (suppressClick.current) { event.preventDefault(); event.stopPropagation(); suppressClick.current = false; } }}

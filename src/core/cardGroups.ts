@@ -1,4 +1,4 @@
-import {clone,uid,type CardLayout,type Workspace} from './model';
+import {clone,uid,layoutSizes,type CardLayout,type Workspace} from './model';
 export type CardGroup={id:string;name:string;cardIds:string[];style:'rings'|'bars';simple?:boolean;layout?:CardLayout};
 export function groupIsSimple(group:CardGroup,workspace:Workspace){return group.simple??workspace.groupValues===false;}
 export function groupForCard(workspace:Workspace,id:string){return workspace.cardGroups?.find(group=>group.cardIds.includes(id));}
@@ -20,15 +20,16 @@ export function combineCards(workspace:Workspace,source:string,target:string):Wo
 export function dissolveGroup(workspace:Workspace,id:string):Workspace {return {...workspace,cardGroups:workspace.cardGroups?.filter(g=>g.id!==id)};}
 export function moveGroup(workspace:Workspace,id:string,folderId:string):Workspace {
   const group=workspace.cardGroups?.find(g=>g.id===id);if(!group||!workspace.folders?.some(f=>f.id===folderId))return workspace;
-  return {...workspace,cards:workspace.cards.map(c=>group.cardIds.includes(c.id)?{...c,folderId,layout:c.layout?{variant:c.layout.variant}:undefined}:c),cardGroups:workspace.cardGroups?.map(g=>g.id===id?{...g,layout:g.layout?{variant:g.layout.variant}:undefined}:g)};
+  return {...workspace,cards:workspace.cards.map(c=>group.cardIds.includes(c.id)?{...c,folderId,layout:layoutSizes(c.layout)}:c),cardGroups:workspace.cardGroups?.map(g=>g.id===id?{...g,layout:layoutSizes(g.layout)}:g)};
 }
 export function duplicateGroup(workspace:Workspace,id:string):Workspace {
   const group=workspace.cardGroups?.find(g=>g.id===id);if(!group)return workspace;
-  const copies=group.cardIds.map(id=>({...clone(workspace.cards.find(c=>c.id===id)!),id:uid()}));
-  return {...workspace,cards:[...workspace.cards,...copies],cardGroups:[...(workspace.cardGroups??[]),{...clone(group),id:uid(),name:`${group.name} · 副本`,cardIds:copies.map(c=>c.id),layout:{variant:group.layout?.variant??'large'}}]};
+  const copies=group.cardIds.map(id=>{const card=workspace.cards.find(c=>c.id===id)!;return {...clone(card),id:uid(),layout:layoutSizes(card.layout)};});
+  return {...workspace,cards:[...workspace.cards,...copies],cardGroups:[...(workspace.cardGroups??[]),{...clone(group),id:uid(),name:`${group.name} · 副本`,cardIds:copies.map(c=>c.id),layout:layoutSizes(group.layout)??{variant:'large'}}]};
 }
 
 export function groupPresentation(width:number,height:number,count:number,detailed=false,showValues=true) {
+  if(!detailed&&(width<120||height<110)){const columns=Math.max(1,Math.min(count,Math.floor(width/60))),labels=height>=82,values=height>=110;return {columns,visible:Math.min(count,columns),ringSize:Math.max(16,Math.min(48,(width-(columns-1)*8)/columns-4,height-(labels?22:0)-(values?26:0)-4)),labels,values};}
   const columns=Math.max(1,Math.floor(width/(detailed?160:140)));
   const compact=width<210&&height<230;
   const cols=compact?Math.min(2,Math.max(1,count)):Math.min(columns,Math.max(1,count));
@@ -36,5 +37,5 @@ export function groupPresentation(width:number,height:number,count:number,detail
   const visible=detailed?count:Math.min(count,compact?2:cols*rows);
   const actualRows=Math.max(1,Math.ceil(visible/cols));
   const ringSize=detailed?120:Math.max(40,Math.min(120,(width-(cols-1)*12)/cols-12,(height-(actualRows-1)*12)/actualRows-(showValues?86:54)));
-  return {columns:cols,visible,ringSize};
+  return {columns:cols,visible,ringSize,labels:true,values:true};
 }

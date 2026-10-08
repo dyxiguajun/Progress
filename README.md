@@ -14,6 +14,8 @@ Progress separates data sources from presentation. Local goals, time ranges, HTT
 
 - Progress bars, rings, numbers and fill renderers; card details and configuration.
 - Sixteen rectangular card sizes, horizontal / vertical arrangement, drag, resize and grouped cards.
+- Compact four-column phone grid with separately saved mobile / desktop layouts.
+- Optional Chrome extension for collecting approved HTTP sources after closing the page.
 - Optional display fields and ordering; whole fields hide when space is insufficient and return after resizing.
 - HTTP JSON / URL Progress, reusable component packages and workspace import / export.
 - Local Codex quota integration through the desktop agent; credentials remain managed by Codex.
@@ -41,10 +43,11 @@ For the local browser + agent desktop workflow, use `pnpm desktop`. Codex must b
 - [Development](docs/DEVELOPMENT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [PDM and URL Progress](docs/PDM.md)
+- [Chrome background collection](docs/Chrome_Background.md)
 - [Contributing](CONTRIBUTING.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
-Current Web source: **v0.6.4**, early development. Interfaces and package formats may change. This initial source distribution focuses on Web; it does not include an updated Android APK or Android build output. Real hardware and service integration coverage is still evolving.
+Current Web source: **v0.6.5**, early development. Interfaces and package formats may change. This initial source distribution focuses on Web; it does not include an updated Android APK or Android build output. Real hardware and service integration coverage is still evolving.
 
 ## License
 
