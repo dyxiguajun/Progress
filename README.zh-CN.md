@@ -4,6 +4,8 @@
 
 **Progress 是容器。Less is More。**
 
+线上试试: https://progress-dyxiguajun.pages.dev/
+
 当前 Web 源码 v0.6.4：支持进度条、圆环、数值与填充，16 种矩形尺寸、横竖排列、拖拽缩放和组合卡片；可选择显示字段与顺序，空间不足整项隐藏，放大恢复。支持 HTTP PDM 接入、组件安装及工作区导出 / 导入。本机 Codex 配额依赖已安装并登录的 Codex 与本地 Agent。
 
 Node.js 22.12+、pnpm 9+：
