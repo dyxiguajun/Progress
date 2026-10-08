@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Progress prototype Metric v0.1",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "kind"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "kind": {
+      "enum": [
+        "range",
+        "gauge",
+        "counter",
+        "time_range",
+        "state",
+        "indeterminate"
+      ]
+    },
+    "value": {
+      "type": [
+        "number",
+        "string"
+      ]
+    },
+    "min": {
+      "type": "number"
+    },
+    "max": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "meaning": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stale_after": {
+      "type": "number",
+      "minimum": 0
+    },
+    "secondary": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "value"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "reset_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_minutes": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "range",
+              "gauge",
+              "counter"
+            ]
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "range"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "max"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "time_range"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "end"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "state"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {
+            "const": "indeterminate"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "max > min and end > start are semantic constraints enforced by the runtime."
+}

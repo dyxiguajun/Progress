@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Progress prototype grid extension v0.1 (experimental)",
+  "definitions": {
+    "cardLayouts": {
+      "type": "object",
+      "required": [
+        "default",
+        "variants"
+      ],
+      "properties": {
+        "default": {
+          "type": "string"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "span"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,39}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "span": {
+                "type": "object",
+                "required": [
+                  "columns",
+                  "rows"
+                ],
+                "properties": {
+                  "columns": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "rows": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  }
+                }
+              },
+              "fallback": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "cardLayout": {
+      "type": "object",
+      "required": [
+        "variant"
+      ],
+      "properties": {
+        "variant": {
+          "type": "string"
+        },
+        "position": {
+          "type": "object",
+          "required": [
+            "column",
+            "row",
+            "columns"
+          ],
+          "properties": {
+            "column": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "row": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9999
+            },
+            "columns": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            }
+          }
+        },
+        "horizontalPosition": {
+          "type": "object",
+          "required": [
+            "column",
+            "row",
+            "rows"
+          ],
+          "properties": {
+            "column": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9999
+            },
+            "row": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 7
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            }
+          }
+        }
+      }
+    }
+  }
+}

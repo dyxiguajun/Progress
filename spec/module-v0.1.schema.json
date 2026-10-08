@@ -1,0 +1,301 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Progress prototype Manifest v0.1",
+  "type": "object",
+  "required": [
+    "schema",
+    "id",
+    "name",
+    "version",
+    "description",
+    "author",
+    "runtime",
+    "configuration"
+  ],
+  "properties": {
+    "schema": {
+      "const": "progress/module/v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9-]+)+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "runtime": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "enum": [
+                "time_range",
+                "manual",
+                "quota"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "entry"
+          ],
+          "properties": {
+            "type": {
+              "const": "static"
+            },
+            "entry": {
+              "const": "data.json"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type",
+            "url"
+          ],
+          "properties": {
+            "type": {
+              "const": "http"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "refresh_interval": {
+              "type": "number",
+              "minimum": 5
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "const": "codex_usage"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "const": "provider_quota"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "required": [
+        "schema"
+      ],
+      "properties": {
+        "schema": {
+          "const": "config.schema.json"
+        }
+      },
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "array",
+      "items": {
+        "const": "network"
+      }
+    },
+    "renderer": {
+      "enum": [
+        "bar",
+        "ring",
+        "number",
+        "quota",
+        "fill"
+      ]
+    },
+    "cardLayouts": {
+      "type": "object",
+      "required": [
+        "default",
+        "variants"
+      ],
+      "properties": {
+        "default": {
+          "type": "string"
+        },
+        "variants": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "span"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,39}$"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "span": {
+                "type": "object",
+                "required": [
+                  "columns",
+                  "rows"
+                ],
+                "properties": {
+                  "columns": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "rows": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 8
+                  }
+                }
+              },
+              "fallback": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "quotaProvider": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "connectionMethods",
+        "helpUrl",
+        "credentialInstructions",
+        "requiredScopes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "connectionMethods": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "api-key",
+              "bearer",
+              "read-only-url",
+              "endpoint-secret",
+              "pairing"
+            ]
+          }
+        },
+        "helpUrl": {
+          "type": "string"
+        },
+        "credentialInstructions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requiredScopes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "endpoint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "type": {
+                "const": "http"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "permissions"
+        ],
+        "properties": {
+          "permissions": {
+            "contains": {
+              "const": "network"
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "runtime": {
+            "properties": {
+              "type": {
+                "const": "codex_usage"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "id": {
+            "const": "dev.progress.codex-usage"
+          }
+        }
+      }
+    }
+  ]
+}

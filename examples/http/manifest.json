@@ -1,0 +1,6 @@
+{
+  "schema": "progress/module/v1", "id": "dev.example.http", "name": "远程指标",
+  "version": "0.1.0", "description": "从 HTTP JSON 接口获取一个或多个 Progress 指标。", "author": "Progress Example",
+  "runtime": { "type": "http", "url": "{{endpoint}}", "refresh_interval": 15 },
+  "configuration": { "schema": "config.schema.json" }, "permissions": ["network"], "renderer": "bar"
+}

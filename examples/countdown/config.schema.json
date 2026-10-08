@@ -1,0 +1,7 @@
+{
+  "type": "object", "required": ["end"], "additionalProperties": false,
+  "properties": {
+    "end": { "type": "string", "format": "date-time", "title": "目标时间" },
+    "start": { "type": "string", "format": "date-time", "title": "开始时间（可选）" }
+  }
+}

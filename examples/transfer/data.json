@@ -1,0 +1,4 @@
+[
+  { "id": "transfer", "name": "示例备份", "kind": "range", "value": 1180, "max": 1630, "unit": "GB", "meaning": "completed", "status": "running", "secondary": [ { "role": "rate", "value": 38.2, "unit": "MB/s" }, { "role": "eta", "value": 13320, "unit": "s" } ] },
+  { "id": "files", "name": "示例文件数", "kind": "counter", "value": 8421, "unit": "个文件" }
+]

@@ -1,0 +1,4 @@
+{
+  "type": "object", "required": ["endpoint"], "additionalProperties": false,
+  "properties": { "endpoint": { "type": "string", "title": "服务地址", "default": "http://127.0.0.1:8787/progress", "minLength": 8 } }
+}

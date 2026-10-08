@@ -1,0 +1,5 @@
+{
+  "schema": "progress/module/v1", "id": "dev.example.countdown", "name": "我的倒计时",
+  "version": "0.1.0", "description": "使用宿主本地时间计算的声明式倒计时。", "author": "Progress Example",
+  "runtime": { "type": "time_range" }, "configuration": { "schema": "config.schema.json" }, "renderer": "number"
+}

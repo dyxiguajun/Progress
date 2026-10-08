@@ -1,0 +1,3 @@
+export const iconLabels = {"activity": "活动", "calendar": "日历", "download": "下载", "layers": "图层", "database": "数据", "timer": "计时", "target": "目标", "folder": "文件夹", "star": "星标", "briefcase": "工作", "heart": "生活", "gpt": "GPT / OpenAI", "terminal": "终端 / Codex", "code": "代码", "bot": "智能助手", "sparkles": "灵感", "cloud": "云端", "server": "服务器 / NAS", "hardDrive": "硬盘", "upload": "上传", "file": "文件", "archive": "归档", "wifi": "网络", "cpu": "处理器", "chart": "统计", "battery": "电池", "phone": "手机", "watch": "手表", "book": "阅读", "coffee": "休息", "check": "完成", "rocket": "启动"} as const;
+export type IconName = keyof typeof iconLabels;
+export const iconNames = Object.keys(iconLabels) as IconName[];

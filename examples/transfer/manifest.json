@@ -1,0 +1,11 @@
+{
+  "schema": "progress/module/v1",
+  "id": "dev.example.transfer",
+  "name": "传输样例",
+  "version": "0.1.0",
+  "description": "包含传输进度和文件计数的固定样本，用于验证组件导入。",
+  "author": "Progress Example",
+  "runtime": { "type": "static", "entry": "data.json" },
+  "configuration": { "schema": "config.schema.json" },
+  "renderer": "bar"
+}
