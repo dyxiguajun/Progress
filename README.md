@@ -4,6 +4,8 @@ A minimal, extensible, local-first workspace for tracking anything measurable.
 
 **Progress is a container, not the content. Less is More.**
 
+Try Online: https://progress-dyxiguajun.pages.dev/
+
 [简体中文](README.zh-CN.md)
 
 Progress separates data sources from presentation. Local goals, time ranges, HTTP metrics and supported quota providers become cards in a workspace stored on your device.
