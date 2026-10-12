@@ -1,27 +1,26 @@
+# Dependencies and generated output
 node_modules/
 dist/
+coverage/
 *.tsbuildinfo
-.DS_Store
-android/.gradle/
-android/local.properties
-android/app/build/
-android/build/
-android/app/src/main/assets/public/
-android/app/src/main/assets/capacitor.config.json
-android/app/src/main/assets/capacitor.plugins.json
-artifacts/screenshots/
-.tools/
-
-.progress-agent/
-
-# Private development records and generated / device-local files
-/AGENTS.md
-/BUILD_STATUS.md
-/Progress*.md
 /artifacts/
+
+# Local tools, device projects and agent state
+/.tools/
+/.progress-agent/
 /android/
 /scripts/build-android.sh
 /scripts/make-android-icons.py
+
+# Private development records; old root names remain protected
+/AGENTS.md
+/BUILD_STATUS.md
+/Progress*.md
+/docs/local/
+
+# Machine files, logs, credentials and exported user data
+.DS_Store
+Thumbs.db
 *.log
 *.env
 .env.*

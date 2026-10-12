@@ -1,6 +1,6 @@
 # Progress 原型实现合同 v0.1
 
-此文档描述 v0.3.0 代码实际支持的能力，是完整 Component Specification 的子集。迁移格式仍使用 v1 Schema。
+此文档记录原型格式及截至 Web v0.6.5 的兼容扩展，是完整 Component Specification 的子集。文件名保留原型格式版本；迁移格式仍使用 v1 Schema。实际校验以 Schema 与运行时实现共同为准。
 
 ## 对象与存储
 
@@ -65,7 +65,7 @@ Manifest 可选 `cardLayouts: { default, variants }`，每个变体包含 `id`�
 
 Card 可选 `layout: { variant, position?: { column, row, columns } }`。`variant` 是用户首选尺寸；格位从零开始，`columns` 记录生成提示时的网格容量。没有布局字段的旧卡片自动使用组件默认尺寸并首次定位，组件与连接定义保持不变。
 
-网格通过 ResizeObserver 读取实际卡片画布宽度，当前实现使用 160 px 的最小单元参考宽度、16 px 间距和最多 12 列。这些物理参数是宿主实现，不是协议要求。窗口容量不足时按声明链选择可容纳的变体，仍不足时选择确定的兼容变体；若完全没有受支持尺寸，使用明确的占位提示，不压缩 Renderer。首选尺寸不因窗口变窄而被覆盖。
+网格通过 ResizeObserver 读取实际卡片画布宽度，根据当前布局 profile 计算整数列数与格位，最多 12 列；桌面单元尺寸、间距与留白由 `src/core/grid.ts` 的布局参数决定。v0.6.5 的 mobile profile 在画布宽度不超过 520 px 时使用四列与 6 px 间距，更宽时可增加列数。这些物理参数是宿主实现，不是协议要求。窗口容量不足时按声明链选择可容纳的变体，仍不足时选择确定的兼容变体；若完全没有受支持尺寸，使用明确的占位提示，不压缩 Renderer。首选尺寸不因窗口变窄而被覆盖。
 
 首次 / 新卡片寻找第一块空区域；既有有效格位先保留。移动或调整尺寸时固定目标 footprint，保留不冲突卡片，仅为冲突卡片寻找最近的可用格位。预览使用同一算法，越界或非整数跨度无效。有效释放、尺寸选择或方向按钮操作立即持久化；取消和无效释放保留原布局。只修改 Card 层，不改变 Instance、Metric 或连接采集状态。
 
@@ -77,7 +77,7 @@ Card 可选 `layout: { variant, position?: { column, row, columns } }`。`varian
 
 macOS / Windows 本机 Agent 读取 Codex app-server，静态网页和 Android 不具有本机执行权限。Codex 负责登录和凭据；宿主只接收脱敏账户、窗口与 credits。适配器优先多 bucket；缺失、未知、异常字段不补 0 / 100。首次、前台、手动、通知与五分钟兜底读取；十五分钟标记过期，失败保留旧样本，账户变化要求重新确认。
 
-最后样本与工作区分开保存且不导出。迁移只保留白名单的组件、配置、组选择及外观，清空账户绑定，恢复时再次确认本机账户。此扩展尚为原型字段；详细边界及实际验收见 `../Progress_Codex_Handoff_v0.4.md`。
+最后样本与工作区分开保存且不导出。迁移只保留白名单的组件、配置、组选择及外观，清空账户绑定，恢复时再次确认本机账户。此扩展尚为原型字段；集成与平台边界见[架构](../docs/ARCHITECTURE.md)及[开发指南](../docs/DEVELOPMENT.md)。
 
 ## 待扩展
 
@@ -99,4 +99,10 @@ Workspace.cardGroups 为引用式组合数组，每项包含 id、name、cardIds
 
 Card.displayPreferences 可选 `{fields:string[]}`，最多 64 个唯一键；缺省沿用原 renderer / display，不迁移旧卡。基础键 icon/title/value/progress/status/details/reset/credits/account/updated，附加键 metric:<id>、secondary:<id>；旧 secondary 无 id 使用 role:同角色序号。配置属于 Card，复制与白名单导出保留；缺失键保留选择但不造值。图标 / 名称保留头部，其他顺序是实际空间预算的优先级。临时隐藏不会修改持久配置。详情展示完整来源指标。
 
-组合判定内部区域改为四边固定内缩 24 CSS px；保持既有顶部 / 侧上三分之一入口及 420ms 稳定停留。具体实现、验收及边界见 Progress_Display_Adaptive_Handoff_v0.6.4.md。
+组合判定内部区域改为四边固定内缩 24 CSS px；保持既有顶部 / 侧上三分之一入口及 420ms 稳定停留。相关布局计算见 `src/core/grid.ts`，交互实现见 `src/ui/WorkspaceGrid.tsx`；验证命令与平台边界见[开发指南](../docs/DEVELOPMENT.md)。
+
+## v0.6.5 手机布局与后台采集
+
+Card 与组合的 `layout.mobile` 可独立保存 `variant`、`position` 与 `horizontalPosition`。桌面继续使用既有同名字段；旧数据未含 mobile 时先读取已有布局，再生成独立手机位置。复制 / 移动保留两套尺寸偏好并清除目标位置，导出 / 导入保留两套布局。
+
+可选 Chrome 扩展提供已授权完整 HTTP endpoint 的后台采集传输。网络与后台采集授权属于设备状态，导出时清除，Chrome host 授权也不迁移；调度、缓存与实际安装验收边界见[Chrome 后台采集](../docs/Chrome_Background.md)。

@@ -21,6 +21,7 @@ pnpm preview
 - `extension`: optional Manifest V3 HTTP collector; build with `pnpm extension:build` and follow [installation and permissions](Chrome_Background.md).
 - `tests`: Vitest regression tests; fixtures are synthetic / test-only.
 - `examples`, `spec`: module examples and schemas.
+- `docs`: public documentation; [index](README.md) and [repository contents](REPOSITORY.md).
 - `dist`: generated Web output, never committed.
 
 No credentials are required for tests or manual / time cards. For a simulated HTTP source, run `node scripts/demo-source.mjs` and follow [PDM](PDM.md). Do not commit workspaces, secrets, local agent state or screenshots of real accounts.

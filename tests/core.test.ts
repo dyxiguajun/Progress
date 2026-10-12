@@ -124,7 +124,7 @@ describe('workspace references and migration', () => {
   });
 });
 describe('component packages and HTTP runtime', () => {
-  it('imports the supplied rclone v0.1.3 archive, including its companion files', async () => {
+  it('imports a sanitized rclone v0.1.3 archive with synthetic companion files', async () => {
     const fixture = await readFile(new URL('./fixtures/rclone-transfer-v0.1.3.progressmod', import.meta.url));
     const { component } = await importFile('rclone-transfer-v0.1.3.progressmod', bytes(fixture));
     expect(component?.manifest.id).toBe('dev.xigua.rclone-transfer');

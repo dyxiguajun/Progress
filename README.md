@@ -40,11 +40,13 @@ For the local browser + agent desktop workflow, use `pnpm desktop`. Codex must b
 
 ## Data and development
 
+- [Documentation index](docs/README.md)
 - [Development](docs/DEVELOPMENT.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [PDM and URL Progress](docs/PDM.md)
 - [Chrome background collection](docs/Chrome_Background.md)
 - [Contributing](CONTRIBUTING.md)
+- [Repository contents](docs/REPOSITORY.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 Current Web source: **v0.6.5**, early development. Interfaces and package formats may change. This initial source distribution focuses on Web; it does not include an updated Android APK or Android build output. Real hardware and service integration coverage is still evolving.

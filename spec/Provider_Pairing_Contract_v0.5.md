@@ -61,4 +61,4 @@ Owner API `/api/pairing/*` 要求 loopback Host、同 Origin、X-Progress-Client
 
 ## 验收边界
 
-详见 `Progress_Handoff_v0.5.md`。浏览器两来源配对与 Node 加密协议测试不等同于真实 Android 相机 / 权限 / WebView / 局域网验收；调试 APK 构建成功也不等同于真机通过。
+浏览器两来源配对与 Node 加密协议测试不等同于真实 Android 相机 / 权限 / WebView / 局域网验收；调试 APK 构建成功也不等同于真机通过。当前公开仓库仅分发 Web、桌面 Agent 与可选 Chrome 扩展源码，不包含 Android 项目或新版 APK；开发命令及发布范围见[开发指南](../docs/DEVELOPMENT.md)和[仓库文件范围](../docs/REPOSITORY.md)。
