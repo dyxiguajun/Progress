@@ -2,10 +2,14 @@
 
 Start with the [project README](../README.md) or [简体中文说明](../README.zh-CN.md).
 
+New contributors: follow [Development](DEVELOPMENT.md) or the [中文开发指南](DEVELOPMENT.zh-CN.md), then read [Architecture](ARCHITECTURE.md). To connect a service or create a module, continue with [Extending Progress](EXTENDING.md). Use [Testing](TESTING.md) before submitting changes.
+
 | Document | Purpose |
 | --- | --- |
-| [Development](DEVELOPMENT.md) | Toolchain, commands, source layout and validation limits |
-| [Architecture](ARCHITECTURE.md) | Data model, collection, storage and rendering |
+| [Development](DEVELOPMENT.md) / [中文开发指南](DEVELOPMENT.zh-CN.md) | Fresh checkout, commands, execution modes, source map and troubleshooting |
+| [Architecture](ARCHITECTURE.md) | Data ownership, collection lifecycle, storage/portability, agents and layout profiles |
+| [Extending Progress](EXTENDING.md) | HTTP sources, declarative component packages and runtime/provider/renderer contributions |
+| [Testing](TESTING.md) | Automated checks, synthetic smoke flows, UI/input regression and verification limits |
 | [PDM](PDM.md) | HTTP JSON progress data and examples |
 | [Chrome background collection](Chrome_Background.md) | Optional extension installation, permissions and limits |
 | [Repository contents](REPOSITORY.md) | What belongs in GitHub and what stays local |

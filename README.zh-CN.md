@@ -21,6 +21,6 @@ pnpm build
 
 按 Vite 输出打开本地页面。首次工作区为空，示例需主动添加。开发不需要真实服务凭据。桌面浏览器与 Agent 启动方式为 `pnpm desktop`；静态部署不包含 Agent。
 
-[文档索引](docs/README.md) · [开发指南](docs/DEVELOPMENT.md) · [架构](docs/ARCHITECTURE.md) · [PDM 接入](docs/PDM.md) · [贡献](CONTRIBUTING.md) · [仓库文件范围](docs/REPOSITORY.md)
+[文档索引](docs/README.md) · [中文开发指南](docs/DEVELOPMENT.zh-CN.md) · [English](docs/DEVELOPMENT.md) · [架构](docs/ARCHITECTURE.md) · [扩展开发](docs/EXTENDING.md) · [测试与验收](docs/TESTING.md) · [PDM 接入](docs/PDM.md) · [贡献](CONTRIBUTING.md) · [仓库文件范围](docs/REPOSITORY.md)
 
 项目处于早期开发，接口与格式仍可能变化。首次源码发布以 Web 为主，不提供新版 Android APK。自有代码采用 [MIT](LICENSE)，第三方许可见 [声明](THIRD_PARTY_NOTICES.md)。

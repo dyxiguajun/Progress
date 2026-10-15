@@ -41,8 +41,10 @@ For the local browser + agent desktop workflow, use `pnpm desktop`. Codex must b
 ## Data and development
 
 - [Documentation index](docs/README.md)
-- [Development](docs/DEVELOPMENT.md)
+- [Developer guide](docs/DEVELOPMENT.md) / [中文开发指南](docs/DEVELOPMENT.zh-CN.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Extending Progress](docs/EXTENDING.md)
+- [Testing and validation](docs/TESTING.md)
 - [PDM and URL Progress](docs/PDM.md)
 - [Chrome background collection](docs/Chrome_Background.md)
 - [Contributing](CONTRIBUTING.md)
